@@ -9,7 +9,9 @@ public strictfp class RobotPlayer {
     //set to 1 to go into combat, -1 to avoid, 0 to scout
     static int combat = -1;
     //has this unity seen the enemy yet
-    static boolean seenEnemy = false; 
+    static boolean seenEnemy = false;
+    //
+    static int[] signalLoc = new int[2];
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -37,6 +39,12 @@ public strictfp class RobotPlayer {
             case LUMBERJACK:
                 runLumberjack();
                 break;
+            case TANK:
+                runSoldier();
+                break;
+            case SCOUT:
+            	runSoldier();
+                break;
         }
 	}
 
@@ -58,7 +66,7 @@ public strictfp class RobotPlayer {
 
                 // Randomly attempt to build a gardener in this direction
                 // TODO come up with a better way to decide when to do this
-                if (rc.canHireGardener(dir) && Math.random() < .01) {
+                if ( rc.canHireGardener(dir) && (Math.random() < .01 || rc.getTeamBullets() > 150)) {
                     rc.hireGardener(dir);
                 }
                 
@@ -177,7 +185,6 @@ public strictfp class RobotPlayer {
                         
                     }
                     combat = -1;
-                    //tryMove(randomDirection());
                 }
               
 
@@ -198,8 +205,9 @@ public strictfp class RobotPlayer {
     static void runLumberjack() throws GameActionException {
         System.out.println("I'm a lumberjack!");
         Team enemy = rc.getTeam().opponent();
-        combat = 1;
+        combat = 0;
         int targetTree = 1;
+        boolean shakeTree = false;
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -252,9 +260,21 @@ public strictfp class RobotPlayer {
             	   if(trees.length > 0) {
             		   //Pick a new tree to target
             		   //TODO use a better algorithm for doing this. Maybe check for bullets or robots or pick closest one
-            		   if(trees[0].getTeam() == Team.NEUTRAL || trees[0].getTeam() == enemy) {
+            		   if((trees[0].getTeam() == Team.NEUTRAL && trees[0].containedRobot != null) || trees[0].getTeam() == enemy) {
             			   treeInfo = trees[0];
             			   targetTree = treeInfo.ID;
+            			   shakeTree = false;
+            			   combat = 0;
+            		   }
+            		   else if(trees[0].containedBullets > 5) {
+            			   treeInfo = trees[0];
+            			   targetTree = treeInfo.ID;
+            			   shakeTree = true;
+            			   combat = 0;
+            		   }
+            		   else {
+            			   //if no trees around use in combat
+            			   combat = 1;
             		   }
             	   }
                }
@@ -267,9 +287,15 @@ public strictfp class RobotPlayer {
 		        			tryMove(directionTwords( rc.getLocation(), treeInfo.location));
 		        		}
 	       				
-	       				if(rc.canChop(treeInfo.ID) && !rc.hasAttacked()) {
+	       				if(!shakeTree && rc.canChop(treeInfo.ID) && !rc.hasAttacked()) {
 		        			System.out.println("Chop");
 		        			rc.chop(treeInfo.ID);
+		        		}
+	       				
+	       				if(shakeTree && rc.canShake(treeInfo.ID) && !rc.hasAttacked()) {
+		        			System.out.println("Shake");
+		        			rc.shake(treeInfo.ID);
+		        			targetTree = -1;
 		        		}
 		        		
 	       			}
@@ -309,20 +335,32 @@ public strictfp class RobotPlayer {
     static void wander() throws GameActionException {
     	
     	if(combat != 0 && targetDirection != null) {
+    		//run to
     		int broadcastOne = rc.readBroadcast(2);
     		int broadcastTwo = rc.readBroadcast(3);
     		System.out.println(" " + broadcastOne + " " + broadcastTwo);
-    		if(broadcastOne != 0 || broadcastTwo != 0) {
-    			
-    			if(combat > 0)
-    				targetDirection = new Direction(rc.getLocation(), new MapLocation(broadcastOne, broadcastTwo));
-    			else if(combat < 0)
-    				targetDirection = new Direction(new MapLocation(broadcastOne, broadcastTwo), rc.getLocation());
+    		if( (broadcastOne != 0 || broadcastTwo != 0) && (signalLoc[0] != broadcastOne || signalLoc[1] != broadcastTwo)) {
+    			MapLocation newLoc = new MapLocation(broadcastOne, broadcastTwo);
+    			if(combat > 0) {
+    				
+    				targetDirection = new Direction(rc.getLocation(), newLoc);
+    				signalLoc[0] = broadcastOne;
+    				signalLoc[1] = broadcastTwo;
+    			}
+    			else if(combat < 0) { 
+    				//run away if close
+    				MapLocation myLoc = rc.getLocation();
+    				if(myLoc.distanceSquaredTo(newLoc) < 100) {
+	    				targetDirection = new Direction(newLoc, myLoc);
+	    				signalLoc[0] = broadcastOne;
+	    				signalLoc[1] = broadcastTwo;
+    				}
+    			}
     		}
     	}
     	
     	
-    	if(targetDirection == null || Math.random() < .02f)
+    	if(targetDirection == null || Math.random() < .1f)
     		targetDirection = randomDirection();
     	
     	if(!tryMove(targetDirection)) {
