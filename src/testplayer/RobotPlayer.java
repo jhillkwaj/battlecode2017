@@ -2,16 +2,39 @@ package testplayer;
 import battlecode.common.*;
 
 public strictfp class RobotPlayer {
+	
+	////////////////////////////////////////
+	// SIGNAL ARRAY (add new signals here)
+	///////////////////////////////////////
+	// 0 - Unused
+	// 1 - unused
+	// 2 - Enemy Sighting x
+	// 3 - Enemy Sighting y
+	// 4 - Archon count
+	// 5 - Gardener count
+	// 6 - Soldier count
+	// 7 - Lumberjack count
+	// 8 - Tank Count
+	// 9 - Scout Count
+	// 10 - unused
+	// 11+ unused
+	////////////////////////////////////////
+	
+	// Gardener, soldier, lumberjack, tank, scout
+	static float[] buildOrder = {5, 3, 1, 0, 0};
+	
     static RobotController rc;
     
     //direction to move in
     static Direction targetDirection = null;
-    //set to 1 to go into combat, -1 to avoid, 0 to scout
-    static int combat = -1;
+    //set to 1 to go into combat, < 0 to avoid at that range, 0 to scout
+    static int combat = -100;
     //has this unity seen the enemy yet
     static boolean seenEnemy = false;
     //
     static int[] signalLoc = new int[2];
+    //
+    static boolean broadcastDeath = false;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -19,11 +42,14 @@ public strictfp class RobotPlayer {
     **/
     @SuppressWarnings("unused")
     public static void run(RobotController rc) throws GameActionException {
+    	
 
         // This is the RobotController object. You use it to perform actions from this robot,
         // and to get information on its current status.
         RobotPlayer.rc = rc;
 
+       
+        
         // Here, we've separated the controls into a different method for each RobotType.
         // You can add the missing ones or rewrite this into your own control structure.
         switch (rc.getType()) {
@@ -51,22 +77,37 @@ public strictfp class RobotPlayer {
     //Archon code. Has the highest bytecode so it is best to do command type stuff here
     static void runArchon() throws GameActionException {
         System.out.println("I'm an archon!");
-        Team enemy = rc.getTeam().opponent();
-        combat = -1;
         
+        Team enemy = rc.getTeam().opponent();
+        //flee to range of 10
+        combat = -100;
+        //the bullets the team had the last time the loop ran
+        float lastBullets = 300;
+        //bullets gained since last donation
+        float income = 0;
 
+        //broadcast unit creation
+        rc.broadcast(4,rc.readBroadcast(4) + 1);
+        
+        
         // The code you want your robot to perform every round should be in this loop
         while (true) {
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+            	
+            	if(!broadcastDeath && rc.getHealth() < 20) {
+            		rc.broadcast(4,rc.readBroadcast(4) - 1);
+            		broadcastDeath = true;
+            	}
 
                 // Generate a random direction
                 Direction dir = randomDirection();
 
+
                 // Randomly attempt to build a gardener in this direction
                 // TODO come up with a better way to decide when to do this
-                if ( rc.canHireGardener(dir) && (Math.random() < .01 || rc.getTeamBullets() > 150)) {
+                if ( rc.canHireGardener(dir) && chooseProduction(true) == 0) {
                     rc.hireGardener(dir);
                 }
                 
@@ -94,7 +135,24 @@ public strictfp class RobotPlayer {
 //                rc.broadcast(1,(int)myLocation.y);
                 
                 //TODO buy victory points
+                float bullets = rc.getTeamBullets();
+                if(bullets > lastBullets)
+                {
+                	income += bullets - lastBullets;
+	                if(income > 100 && bullets > 50 && Math.random() < .01f) {
+	                	System.out.println("Thank You! ");
+	                	income -= 100;
+	                	rc.donate(10);
+	                	if(rc.getRoundNum() > 600)
+	                		rc.donate(10);
+	                	if(rc.getRoundNum() > 1200)
+	                		rc.donate(10);
+	                	System.out.println("" + GameConstants.BULLET_EXCHANGE_RATE);
+	                }
+                }
 
+                lastBullets = rc.getTeamBullets();
+                
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
 
@@ -108,19 +166,24 @@ public strictfp class RobotPlayer {
 	static void runGardener() throws GameActionException {
         System.out.println("I'm a gardener!");
         Team enemy = rc.getTeam().opponent();
-        combat = -1;
+        combat = -250;
+        int targetTree = 1;
+        
+        //broadcast unit creation
+        rc.broadcast(5,rc.readBroadcast(5) + 1);
+       
+        
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+            	if(!broadcastDeath && rc.getHealth() < 20) {
+            		rc.broadcast(5,rc.readBroadcast(5) - 1);
+            		broadcastDeath = true;
+            	}
 
-                // Listen for home archon's location
-            	//TODO why do we need this? we don't use it
-                int xPos = rc.readBroadcast(0);
-                int yPos = rc.readBroadcast(1);
-                MapLocation archonLoc = new MapLocation(xPos,yPos);
 
                 // Generate a random direction
                 Direction dir = randomDirection();
@@ -134,18 +197,67 @@ public strictfp class RobotPlayer {
 
                 // Randomly attempt to build a soldier or lumberjack in this direction
                 //TODO come up with a better way for doing this
-                if (rc.canBuildRobot(RobotType.SOLDIER, dir) && Math.random() < .1) {
+                int buildType = chooseProduction(false);
+                
+                if (buildType == 1 && rc.canBuildRobot(RobotType.SOLDIER, dir)) {
                     rc.buildRobot(RobotType.SOLDIER, dir);
-                } else if (rc.canBuildRobot(RobotType.LUMBERJACK, dir) && Math.random() < .1 && rc.isBuildReady()) {
+                } else if (buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) {
                     rc.buildRobot(RobotType.LUMBERJACK, dir);
                 }
                 
                
             	//TODO plant and water trees
-
+                if(rc.canPlantTree(dir) && Math.random() < .6) {
+                	System.out.println("Plant");
+                	rc.plantTree(dir);
+                }
+              
+               
+                //Get the info on the targeted tree
+                TreeInfo treeInfo = null;
+                if(targetTree != -1) {
+                	System.out.println("Check on Target");
+             	   if(rc.canSenseTree(targetTree))
+             		   treeInfo = rc.senseTree(targetTree);
+             	   else
+             		   targetTree = -1;
+                }
+                if(targetTree == -1){
+             	   //if it can't be sensed then pick a new tree
+             	   TreeInfo[] trees = rc.senseNearbyTrees();
+             	   if(trees.length > 0 && trees[0].getTeam() == rc.getTeam()) {
+             		   //Pick a new tree to target
+             		   //TODO use a better algorithm for doing this. Maybe check for bullets or robots or pick closest one
+             		   if(trees[0].health < trees[0].maxHealth) {
+             			  System.out.println("Found water target");
+             			   treeInfo = trees[0];
+            			   targetTree = treeInfo.ID;
+             		   }
+             	   }
+                }
+                // if a tree is targeted move closer and water it if close enough
+ 	       		if(treeInfo != null) {
+       			    if(rc.canWater(treeInfo.ID)) {
+       					System.out.println("Water");
+       					rc.water(treeInfo.ID);
+       					
+       					if(treeInfo.health >= treeInfo.maxHealth) {
+       						System.out.println("Stop Water");
+       						targetTree = -1;
+       					}
+       				}
+       				else {
+       					System.out.println("Move");
+       					tryMove(directionTwords( rc.getLocation(), treeInfo.location));
+       				}
+ 	       			
+                 }
+ 	       		else {
                 // Move randomly
                 //TODO improve on this
-                wander();
+ 	       		if(!rc.hasMoved())
+ 	       			wander();
+ 	       		}
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -162,12 +274,22 @@ public strictfp class RobotPlayer {
         System.out.println("I'm an soldier!");
         Team enemy = rc.getTeam().opponent();
         
+        
+      //broadcast unit creation
+        rc.broadcast(6,rc.readBroadcast(6) + 1);
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
+        	
+        	
         	combat = 1;
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+            	if(!broadcastDeath && rc.getHealth() < 20) {
+            		rc.broadcast(6,rc.readBroadcast(6) - 1);
+            		broadcastDeath = true;
+            	}
+            	
                 MapLocation myLocation = rc.getLocation();
 
                 // See if there are any nearby enemy robots
@@ -184,7 +306,7 @@ public strictfp class RobotPlayer {
                         rc.fireSingleShot(rc.getLocation().directionTo(robots[0].location));
                         
                     }
-                    combat = -1;
+                    combat = -10;
                 }
               
 
@@ -208,12 +330,19 @@ public strictfp class RobotPlayer {
         combat = 0;
         int targetTree = 1;
         boolean shakeTree = false;
+        
+        //broadcast unit creation
+        rc.broadcast(7,rc.readBroadcast(7) + 1);
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
-
+        	
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+            	if(!broadcastDeath && rc.getHealth() < 20) {
+            		rc.broadcast(7,rc.readBroadcast(7) - 1);
+            		broadcastDeath = true;
+            	}
 
                 // See if there are any enemy robots within striking range (distance 1 from lumberjack's radius)
                 RobotInfo[] robots = rc.senseNearbyRobots(RobotType.LUMBERJACK.bodyRadius+GameConstants.LUMBERJACK_STRIKE_RADIUS, enemy);
@@ -270,6 +399,12 @@ public strictfp class RobotPlayer {
             			   treeInfo = trees[0];
             			   targetTree = treeInfo.ID;
             			   shakeTree = true;
+            			   combat = 0;
+            		   }
+            		   else if(trees[0].getTeam() == Team.NEUTRAL) {
+            			   treeInfo = trees[0];
+            			   targetTree = treeInfo.ID;
+            			   shakeTree = false;
             			   combat = 0;
             		   }
             		   else {
@@ -333,7 +468,7 @@ public strictfp class RobotPlayer {
     
     
     static void wander() throws GameActionException {
-    	
+    
     	if(combat != 0 && targetDirection != null) {
     		//run to
     		int broadcastOne = rc.readBroadcast(2);
@@ -350,7 +485,7 @@ public strictfp class RobotPlayer {
     			else if(combat < 0) { 
     				//run away if close
     				MapLocation myLoc = rc.getLocation();
-    				if(myLoc.distanceSquaredTo(newLoc) < 100) {
+    				if(myLoc.distanceSquaredTo(newLoc) < -combat) {
 	    				targetDirection = new Direction(newLoc, myLoc);
 	    				signalLoc[0] = broadcastOne;
 	    				signalLoc[1] = broadcastTwo;
@@ -368,6 +503,37 @@ public strictfp class RobotPlayer {
     		wander();
     	}
 	
+    	
+    }
+    
+    static int chooseProduction(boolean archon) throws GameActionException {
+
+    	//Calculate the number of each unit compared to the desired number
+    	float[] armyRatios = {rc.readBroadcast(5) / buildOrder[0], 
+    			rc.readBroadcast(6) / buildOrder[1], rc.readBroadcast(7) / buildOrder[2],
+    			rc.readBroadcast(8) / buildOrder[3], rc.readBroadcast(9) / buildOrder[4]};
+    	
+    	//store the best one to create
+    	int bestRatio = 1;
+    	
+    	//see if there are any archons or if this unit is an archon. Only in this case can gardeners be produced
+    	if(archon || rc.readBroadcast(4) > 0) {
+    		bestRatio = 0;
+    		//if there are no gardeners and one could be made, make one
+    		if(armyRatios[0] == 0) {
+    			return 0;
+    		}
+    	}
+    	//iterate through each unit type and select the best one to produce next
+    	for(int i = bestRatio + 1; i < armyRatios.length - 2; i++) {
+    		System.out.print(" " + armyRatios[i] + " ");
+    		if(armyRatios[i] < armyRatios[bestRatio]) {
+    			bestRatio = i;
+    		}
+    	}
+    	
+    	System.out.println("Build " + bestRatio);
+    	return bestRatio;
     	
     }
 
@@ -430,8 +596,9 @@ public strictfp class RobotPlayer {
      * @return True if the line of the bullet's path intersects with this robot's current position.
      */
     static boolean willCollideWithMe(BulletInfo bullet) {
-        MapLocation myLocation = rc.getLocation();
 
+        MapLocation myLocation = rc.getLocation();
+        
         // Get relevant bullet information
         Direction propagationDirection = bullet.dir;
         MapLocation bulletLocation = bullet.location;
