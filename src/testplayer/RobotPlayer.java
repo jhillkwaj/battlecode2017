@@ -21,7 +21,7 @@ public strictfp class RobotPlayer {
 	////////////////////////////////////////
 	
 	// Gardener, soldier, lumberjack, tank, scout
-	static float[] buildOrder = {5, 3, 1, 0, 0};
+	static float[] buildOrder = {3, 3, 1, 0, 0};
 	
     static RobotController rc;
     
@@ -80,7 +80,7 @@ public strictfp class RobotPlayer {
         
         Team enemy = rc.getTeam().opponent();
         //flee to range of 10
-        combat = -100;
+        combat = -1000;
         //the bullets the team had the last time the loop ran
         float lastBullets = 300;
         //bullets gained since last donation
@@ -136,17 +136,15 @@ public strictfp class RobotPlayer {
                 
                 //TODO buy victory points
                 float bullets = rc.getTeamBullets();
+                
                 if(bullets > lastBullets)
                 {
                 	income += bullets - lastBullets;
-	                if(income > 100 && bullets > 50 && Math.random() < .01f) {
+	                if(income >= 100 * rc.readBroadcast(4) && bullets >= 100) {
 	                	System.out.println("Thank You! ");
-	                	income -= 100;
-	                	rc.donate(10);
-	                	if(rc.getRoundNum() > 600)
-	                		rc.donate(10);
-	                	if(rc.getRoundNum() > 1200)
-	                		rc.donate(10);
+	                	income -= 100 * rc.readBroadcast(4);
+	                	rc.donate(10 * (1 + (rc.getRoundNum()/300)));
+	                	
 	                	System.out.println("" + GameConstants.BULLET_EXCHANGE_RATE);
 	                }
                 }
@@ -166,6 +164,7 @@ public strictfp class RobotPlayer {
 	static void runGardener() throws GameActionException {
         System.out.println("I'm a gardener!");
         Team enemy = rc.getTeam().opponent();
+        Team myTeam = rc.getTeam();
         combat = -250;
         int targetTree = 1;
         
@@ -213,38 +212,32 @@ public strictfp class RobotPlayer {
                 }
               
                
-                //Get the info on the targeted tree
-                TreeInfo treeInfo = null;
-                if(targetTree != -1) {
-                	System.out.println("Check on Target");
-             	   if(rc.canSenseTree(targetTree))
-             		   treeInfo = rc.senseTree(targetTree);
-             	   else
-             		   targetTree = -1;
-                }
-                if(targetTree == -1){
-             	   //if it can't be sensed then pick a new tree
-             	   TreeInfo[] trees = rc.senseNearbyTrees();
-             	   if(trees.length > 0 && trees[0].getTeam() == rc.getTeam()) {
-             		   //Pick a new tree to target
-             		   //TODO use a better algorithm for doing this. Maybe check for bullets or robots or pick closest one
-             		   if(trees[0].health < trees[0].maxHealth) {
-             			  System.out.println("Found water target");
-             			   treeInfo = trees[0];
-            			   targetTree = treeInfo.ID;
-             		   }
-             	   }
-                }
+               //Get the info on the targeted tree
+               TreeInfo treeInfo = null;
+               boolean canWaterTreeInfo = false;
+         	   //if it can't be sensed then pick a new tree
+         	   TreeInfo[] trees = rc.senseNearbyTrees();
+     		   for(TreeInfo tree : trees) {
+         		   //Pick a new tree to target
+         		   //TODO use a better algorithm for doing this. Maybe check for bullets or robots or pick closest one
+         		   if(tree.getTeam() == myTeam) {
+         			   boolean canWaterTree = rc.canWater(tree.ID);
+         			   if(treeInfo == null || tree.health < treeInfo.health || (tree.health < tree.maxHealth && canWaterTree && !canWaterTreeInfo)) {
+         				   System.out.println("Found water target");
+         				   treeInfo = tree;
+         				   targetTree = treeInfo.ID;
+         				   canWaterTreeInfo = canWaterTree;
+         			   }
+         		   }
+     		   }
+         	   
+                
                 // if a tree is targeted move closer and water it if close enough
  	       		if(treeInfo != null) {
-       			    if(rc.canWater(treeInfo.ID)) {
+       			    if(canWaterTreeInfo) {
        					System.out.println("Water");
        					rc.water(treeInfo.ID);
        					
-       					if(treeInfo.health >= treeInfo.maxHealth) {
-       						System.out.println("Stop Water");
-       						targetTree = -1;
-       					}
        				}
        				else {
        					System.out.println("Move");
@@ -300,6 +293,11 @@ public strictfp class RobotPlayer {
                 if (robots.length > 0) {
                 	rc.broadcast(2,(int)robots[0].location.x);
                     rc.broadcast(3,(int)robots[0].location.y);
+                    
+                    if (rc.canFireTriadShot() && rc.getRoundNum() > 500) {
+                    	 rc.fireTriadShot(rc.getLocation().directionTo(robots[0].location));
+                    }
+                    
                     // And we have enough bullets, and haven't attacked yet this turn...
                     if (rc.canFireSingleShot()) {
                         // ...Then fire a bullet in the direction of the enemy.
@@ -377,6 +375,7 @@ public strictfp class RobotPlayer {
                 
                //Get the info on the targeted tree
                TreeInfo treeInfo = null;
+               
                if(targetTree != -1) {
             	   if(rc.canSenseTree(targetTree))
             		   treeInfo = rc.senseTree(targetTree);
@@ -508,6 +507,12 @@ public strictfp class RobotPlayer {
     
     static int chooseProduction(boolean archon) throws GameActionException {
 
+    	//check for victory
+    	float bullets = rc.getTeamBullets();
+    	if((int)(bullets / 10) + rc.getTeamVictoryPoints() >= 1000) {
+        	rc.donate(bullets);
+        }
+    	
     	//Calculate the number of each unit compared to the desired number
     	float[] armyRatios = {rc.readBroadcast(5) / buildOrder[0], 
     			rc.readBroadcast(6) / buildOrder[1], rc.readBroadcast(7) / buildOrder[2],
@@ -516,11 +521,13 @@ public strictfp class RobotPlayer {
     	//store the best one to create
     	int bestRatio = 1;
     	
+    	
+    	
     	//see if there are any archons or if this unit is an archon. Only in this case can gardeners be produced
     	if(archon || rc.readBroadcast(4) > 0) {
     		bestRatio = 0;
     		//if there are no gardeners and one could be made, make one
-    		if(armyRatios[0] == 0) {
+    		if(armyRatios[0] == 0 || rc.getTeamBullets() > 400) {
     			return 0;
     		}
     	}
