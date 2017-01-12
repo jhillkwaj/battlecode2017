@@ -338,8 +338,8 @@ public strictfp class RobotPlayer {
                         
                     }
                     
-                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.LUMBERJACK  ||
-                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .6)
+                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER  ||
+                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .7)
                     	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
                     else
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
@@ -417,8 +417,8 @@ public strictfp class RobotPlayer {
                         
                     }
                     
-                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.LUMBERJACK  ||
-                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .6)
+                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
+                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .7)
                     	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
                     else
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
@@ -609,7 +609,7 @@ public strictfp class RobotPlayer {
     	}
     	
     	
-    	if(targetDirection == null || Math.random() < .1f)
+    	if(targetDirection == null || Math.random() < .05f)
     		targetDirection = randomDirection();
     	
     	if(!tryMove(targetDirection)) {
@@ -640,6 +640,10 @@ public strictfp class RobotPlayer {
     	
     	//see if there are any archons or if this unit is an archon. Only in this case can gardeners be produced
     	if(archon || rc.readBroadcast(4) > 0) {
+    		
+    		if(rc.readBroadcast(5) < 2)
+    			return 0;
+    					
     		bestRatio = 0;
     		//if there are no gardeners and one could be made, make one
     		if(armyRatios[0] == 0 || rc.getTeamBullets() > 400) {
