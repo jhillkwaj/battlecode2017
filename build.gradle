@@ -92,10 +92,10 @@ if (!project.hasProperty("teamA")) {
     ext.teamA = "testplayer"
 }
 if (!project.hasProperty("teamB")) {
-    ext.teamB = "examplefuncsplayer"
+    ext.teamB = "testplayer"
 }
 if (!project.hasProperty("maps")) {
-    ext.maps = "SparseForest"
+    ext.maps = "MagicWood"
 }
 
 // Here we define a task. Tasks like this one, 'unpackClient', can be

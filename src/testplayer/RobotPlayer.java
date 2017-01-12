@@ -126,7 +126,7 @@ public strictfp class RobotPlayer {
 
                 // Move randomly
                 //TODO improve on this
-                wander();
+                wander(10);
 
 //                // Broadcast archon's location for other robots on the team to know
 //                //TODO use this in some way or get rid of it
@@ -259,7 +259,7 @@ public strictfp class RobotPlayer {
                 // Move randomly
                 //TODO improve on this
  	       		if(!rc.hasMoved())
- 	       			wander();
+ 	       			wander(10);
  	       		}
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
@@ -337,7 +337,7 @@ public strictfp class RobotPlayer {
 
                 	// Move randomly
                 if(!rc.hasMoved())
-                	wander();
+                	wander(10);
                 
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
@@ -415,7 +415,7 @@ public strictfp class RobotPlayer {
 
                 	// Move randomly
                 if(!rc.hasMoved())
-                	wander();
+                	wander(10);
                 
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
@@ -542,7 +542,7 @@ public strictfp class RobotPlayer {
             	// Move randomly
 	       		// TODO improve on this
             	if(!rc.hasMoved()) {
-            		wander();
+            		wander(10);
             	}
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
@@ -568,7 +568,9 @@ public strictfp class RobotPlayer {
 	}
     
     
-    static void wander() throws GameActionException {
+    static void wander(int tries) throws GameActionException {
+    	if(tries <= 0)
+    		return;
     
     	if(combat != 0 && targetDirection != null) {
     		//run to
@@ -600,7 +602,7 @@ public strictfp class RobotPlayer {
     	
     	if(!tryMove(targetDirection)) {
     		targetDirection = null;
-    		wander();
+    		wander(tries - 1);
     	}
 	
     	
