@@ -21,7 +21,7 @@ public strictfp class RobotPlayer {
 	////////////////////////////////////////
 	
 	// Gardener, soldier, lumberjack, tank, scout
-	static float[] buildOrder = {3, 3, 1, 0, 0};
+	static float[] buildOrder = {6, 3, 1, 0, 3};
 	
     static RobotController rc;
     
@@ -69,7 +69,7 @@ public strictfp class RobotPlayer {
                 runSoldier();
                 break;
             case SCOUT:
-            	runSoldier();
+            	runScout();
                 break;
         }
 	}
@@ -145,7 +145,6 @@ public strictfp class RobotPlayer {
 	                	income -= 100 * rc.readBroadcast(4);
 	                	rc.donate(10 * (1 + (rc.getRoundNum()/300)));
 	                	
-	                	System.out.println("" + GameConstants.BULLET_EXCHANGE_RATE);
 	                }
                 }
 
@@ -166,12 +165,11 @@ public strictfp class RobotPlayer {
         Team enemy = rc.getTeam().opponent();
         Team myTeam = rc.getTeam();
         combat = -250;
-        int targetTree = 1;
         
         //broadcast unit creation
         rc.broadcast(5,rc.readBroadcast(5) + 1);
        
-        
+        Direction buildAxis = null;
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -185,13 +183,30 @@ public strictfp class RobotPlayer {
 
 
                 // Generate a random direction
-                Direction dir = randomDirection();
+            	Direction dir;
+            	
+            	if(buildAxis == null)
+            		dir = randomDirection();
+            	else
+            		dir = buildAxis;
                 
                 //call for help
                 RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
                 if (robots.length > 0) {
                 	rc.broadcast(2,(int)robots[0].location.x);
                     rc.broadcast(3,(int)robots[0].location.y);
+                }
+                
+                
+              //TODO plant and water trees
+                if(rc.isCircleOccupied(rc.getLocation().add(dir, 1.01f), 1) ) {
+                	
+                	for(int addDir = 60; addDir < 360; addDir += 60) {
+	                	if(rc.canPlantTree(dir.rotateRightDegrees(addDir))) {
+	                		rc.plantTree(dir.rotateRightDegrees(addDir));
+	                		buildAxis = dir;
+	                	}
+                	}
                 }
 
                 // Randomly attempt to build a soldier or lumberjack in this direction
@@ -203,13 +218,12 @@ public strictfp class RobotPlayer {
                 } else if (buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) {
                     rc.buildRobot(RobotType.LUMBERJACK, dir);
                 }
+                else if (buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) {
+                    rc.buildRobot(RobotType.SCOUT, dir);
+                }
                 
                
-            	//TODO plant and water trees
-                if(rc.canPlantTree(dir) && Math.random() < .6) {
-                	System.out.println("Plant");
-                	rc.plantTree(dir);
-                }
+            	
               
                
                //Get the info on the targeted tree
@@ -223,9 +237,7 @@ public strictfp class RobotPlayer {
          		   if(tree.getTeam() == myTeam) {
          			   boolean canWaterTree = rc.canWater(tree.ID);
          			   if(treeInfo == null || tree.health < treeInfo.health || (tree.health < tree.maxHealth && canWaterTree && !canWaterTreeInfo)) {
-         				   System.out.println("Found water target");
          				   treeInfo = tree;
-         				   targetTree = treeInfo.ID;
          				   canWaterTreeInfo = canWaterTree;
          			   }
          		   }
@@ -235,12 +247,10 @@ public strictfp class RobotPlayer {
                 // if a tree is targeted move closer and water it if close enough
  	       		if(treeInfo != null) {
        			    if(canWaterTreeInfo) {
-       					System.out.println("Water");
        					rc.water(treeInfo.ID);
        					
        				}
        				else {
-       					System.out.println("Move");
        					tryMove(directionTwords( rc.getLocation(), treeInfo.location));
        				}
  	       			
@@ -318,7 +328,7 @@ public strictfp class RobotPlayer {
                         
                     }
                     
-                    if(Math.sqrt(smallestDistance) < Math.sqrt(rc.getType().strideRadius * rc.getType().strideRadius) * .5)
+                    if(Math.sqrt(smallestDistance) < Math.sqrt(rc.getType().strideRadius * rc.getType().strideRadius) * .3)
                     	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
                     else
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
@@ -335,6 +345,84 @@ public strictfp class RobotPlayer {
 
             } catch (Exception e) {
                 System.out.println("Soldier Exception");
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    
+    static void runScout() throws GameActionException {
+        System.out.println("I'm an Scout!");
+        Team enemy = rc.getTeam().opponent();
+        
+        
+      //broadcast unit creation
+        rc.broadcast(9,rc.readBroadcast(9) + 1);
+
+        // The code you want your robot to perform every round should be in this loop
+        while (true) {
+        	
+        	
+        	combat = 1;
+            // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
+            try {
+            	if(!broadcastDeath && rc.getHealth() < 15) {
+            		rc.broadcast(9,rc.readBroadcast(9) - 1);
+            		broadcastDeath = true;
+            	}
+            	
+                MapLocation myLocation = rc.getLocation();
+
+                // See if there are any nearby enemy robots
+                RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy);
+
+	                
+                // If there are some...
+                if (robots.length > 0) {
+                	
+                    
+                    int closest = 0;
+                    float smallestDistance = Float.MAX_VALUE;
+                   
+                    for(int i = 0; i < robots.length; i++) {
+                    	float distanceTo = robots[i].getLocation().distanceTo(rc.getLocation());
+                    	if(distanceTo < smallestDistance) {
+                    		closest = i;
+                    		smallestDistance = distanceTo;
+                    	}
+                    }
+                    
+                    rc.broadcast(2,(int)robots[closest].location.x);
+                    rc.broadcast(3,(int)robots[closest].location.y);
+                    
+                    if (robots.length > 2 && rc.canFireTriadShot()) {
+                    	 rc.fireTriadShot(myLocation.directionTo(robots[closest].location));
+                    }
+                    
+                    // And we have enough bullets, and haven't attacked yet this turn...
+                    if (rc.canFireSingleShot()) {
+                        // ...Then fire a bullet in the direction of the enemy.
+                        rc.fireSingleShot(myLocation.directionTo(robots[0].location));
+                        
+                    }
+                    
+                    if(Math.sqrt(smallestDistance) < Math.sqrt(rc.getType().strideRadius * rc.getType().strideRadius) * .2)
+                    	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
+                    else
+                    	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
+                }
+              
+
+                	// Move randomly
+                if(!rc.hasMoved())
+                	wander();
+                
+
+                // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
+                Clock.yield();
+
+            } catch (Exception e) {
+                System.out.println("Scout Exception");
                 e.printStackTrace();
             }
         }
@@ -435,17 +523,14 @@ public strictfp class RobotPlayer {
 	       			if(treeInfo.getTeam() == Team.NEUTRAL || treeInfo.getTeam() == enemy ) {
 	       				
 	       				if(!rc.hasMoved() && !rc.canChop(treeInfo.ID)) {
-		        			System.out.println("Tree!");
 		        			tryMove(directionTwords( rc.getLocation(), treeInfo.location));
 		        		}
 	       				
 	       				if(!shakeTree && rc.canChop(treeInfo.ID) && !rc.hasAttacked()) {
-		        			System.out.println("Chop");
 		        			rc.chop(treeInfo.ID);
 		        		}
 	       				
 	       				if(shakeTree && rc.canShake(treeInfo.ID) && !rc.hasAttacked()) {
-		        			System.out.println("Shake");
 		        			rc.shake(treeInfo.ID);
 		        			targetTree = -1;
 		        		}
@@ -457,7 +542,6 @@ public strictfp class RobotPlayer {
             	// Move randomly
 	       		// TODO improve on this
             	if(!rc.hasMoved()) {
-            		System.out.println("Wander");
             		wander();
             	}
 
@@ -490,7 +574,6 @@ public strictfp class RobotPlayer {
     		//run to
     		int broadcastOne = rc.readBroadcast(2);
     		int broadcastTwo = rc.readBroadcast(3);
-    		System.out.println(" " + broadcastOne + " " + broadcastTwo);
     		if( (broadcastOne != 0 || broadcastTwo != 0) && (signalLoc[0] != broadcastOne || signalLoc[1] != broadcastTwo)) {
     			MapLocation newLoc = new MapLocation(broadcastOne, broadcastTwo);
     			if(combat > 0) {
@@ -532,9 +615,9 @@ public strictfp class RobotPlayer {
         }
     	
     	//Calculate the number of each unit compared to the desired number
-    	float[] armyRatios = {rc.readBroadcast(5) / buildOrder[0], 
-    			rc.readBroadcast(6) / buildOrder[1], rc.readBroadcast(7) / buildOrder[2],
-    			rc.readBroadcast(8) / buildOrder[3], rc.readBroadcast(9) / buildOrder[4]};
+    	float[] armyRatios = {(float)rc.readBroadcast(5) / buildOrder[0], 
+    			(float)rc.readBroadcast(6) / buildOrder[1], (float)rc.readBroadcast(7) / buildOrder[2],
+    			(float)rc.readBroadcast(8) / buildOrder[3], (float)rc.readBroadcast(9) / buildOrder[4]};
     	
     	//store the best one to create
     	int bestRatio = 1;
@@ -550,8 +633,8 @@ public strictfp class RobotPlayer {
     		}
     	}
     	//iterate through each unit type and select the best one to produce next
-    	for(int i = bestRatio + 1; i < armyRatios.length - 2; i++) {
-    		System.out.print(" " + armyRatios[i] + " ");
+    	for(int i = 1 + bestRatio; i < armyRatios.length; i++) {
+    		System.out.println(" " + armyRatios[i] + " " + armyRatios[bestRatio]);
     		if(armyRatios[i] < armyRatios[bestRatio]) {
     			bestRatio = i;
     		}
