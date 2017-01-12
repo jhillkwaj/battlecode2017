@@ -21,7 +21,7 @@ public strictfp class RobotPlayer {
 	////////////////////////////////////////
 	
 	// Gardener, soldier, lumberjack, tank, scout
-	static float[] buildOrder = {6, 3, 1, 0, 3};
+	static float[] buildOrder = {5, 3, 1, 0, 3};
 	
     static RobotController rc;
     
@@ -164,12 +164,14 @@ public strictfp class RobotPlayer {
         System.out.println("I'm a gardener!");
         Team enemy = rc.getTeam().opponent();
         Team myTeam = rc.getTeam();
-        combat = -250;
+        combat = -60;
         
         //broadcast unit creation
         rc.broadcast(5,rc.readBroadcast(5) + 1);
        
         Direction buildAxis = null;
+        
+        boolean water = false;
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -198,18 +200,9 @@ public strictfp class RobotPlayer {
                 }
                 
                 
-              //TODO plant and water trees
-                if(rc.isCircleOccupied(rc.getLocation().add(dir, 1.01f), 1) ) {
-                	
-                	for(int addDir = 60; addDir < 360; addDir += 60) {
-	                	if(rc.canPlantTree(dir.rotateRightDegrees(addDir))) {
-	                		rc.plantTree(dir.rotateRightDegrees(addDir));
-	                		buildAxis = dir;
-	                	}
-                	}
-                }
+              
 
-                // Randomly attempt to build a soldier or lumberjack in this direction
+                // Attempt to build a soldier or lumberjack in this direction
                 //TODO come up with a better way for doing this
                 int buildType = chooseProduction(false);
                 
@@ -223,6 +216,18 @@ public strictfp class RobotPlayer {
                 }
                 
                
+                //plant a tree
+                if(buildAxis != null || (!rc.isCircleOccupied(rc.getLocation().add(dir, 2.01f), 1) 
+                		&& rc.onTheMap(rc.getLocation().add(dir, 2.01f), 1) && rc.senseNearbyRobots(4).length == 0)) {
+                	
+                	for(int addDir = 60; addDir < 360; addDir += 60) {
+	                	if(rc.canPlantTree(dir.rotateRightDegrees(addDir))) {
+	                		rc.plantTree(dir.rotateRightDegrees(addDir));
+	                		buildAxis = dir;
+	                		water = true;
+	                	}
+                	}
+                }
             	
               
                
@@ -236,9 +241,10 @@ public strictfp class RobotPlayer {
          		   //TODO use a better algorithm for doing this. Maybe check for bullets or robots or pick closest one
          		   if(tree.getTeam() == myTeam) {
          			   boolean canWaterTree = rc.canWater(tree.ID);
-         			   if(treeInfo == null || tree.health < treeInfo.health || (tree.health < tree.maxHealth && canWaterTree && !canWaterTreeInfo)) {
+         			   if(water == true && (treeInfo == null || tree.health < treeInfo.health || (canWaterTree && !canWaterTreeInfo))) {
          				   treeInfo = tree;
          				   canWaterTreeInfo = canWaterTree;
+         				   
          			   }
          		   }
      		   }
@@ -252,6 +258,9 @@ public strictfp class RobotPlayer {
        				}
        				else {
        					tryMove(directionTwords( rc.getLocation(), treeInfo.location));
+       					
+       					if(!rc.hasMoved())
+       	 	       			wander(10);
        				}
  	       			
                  }
@@ -259,8 +268,9 @@ public strictfp class RobotPlayer {
                 // Move randomly
                 //TODO improve on this
  	       		if(!rc.hasMoved())
- 	       			wander(10);
+	       			wander(10);
  	       		}
+ 	       		
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
