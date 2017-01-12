@@ -338,7 +338,8 @@ public strictfp class RobotPlayer {
                         
                     }
                     
-                    if(Math.sqrt(smallestDistance) < Math.sqrt(rc.getType().strideRadius * rc.getType().strideRadius) * .3)
+                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.LUMBERJACK  ||
+                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .6)
                     	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
                     else
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
@@ -416,7 +417,8 @@ public strictfp class RobotPlayer {
                         
                     }
                     
-                    if(Math.sqrt(smallestDistance) < Math.sqrt(rc.getType().strideRadius * rc.getType().strideRadius) * .2)
+                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.LUMBERJACK  ||
+                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .6)
                     	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
                     else
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
