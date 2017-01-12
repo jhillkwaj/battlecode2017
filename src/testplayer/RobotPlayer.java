@@ -413,7 +413,7 @@ public strictfp class RobotPlayer {
                     // And we have enough bullets, and haven't attacked yet this turn...
                     if (rc.canFireSingleShot()) {
                         // ...Then fire a bullet in the direction of the enemy.
-                        rc.fireSingleShot(myLocation.directionTo(robots[0].location));
+                        rc.fireSingleShot(myLocation.directionTo(robots[closest].location));
                         
                     }
                     
