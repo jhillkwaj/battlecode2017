@@ -291,24 +291,42 @@ public strictfp class RobotPlayer {
 	                
                 // If there are some...
                 if (robots.length > 0) {
-                	rc.broadcast(2,(int)robots[0].location.x);
-                    rc.broadcast(3,(int)robots[0].location.y);
+                	
                     
-                    if (rc.canFireTriadShot() && rc.getRoundNum() > 500) {
-                    	 rc.fireTriadShot(rc.getLocation().directionTo(robots[0].location));
+                    int closest = 0;
+                    float smallestDistance = Float.MAX_VALUE;
+                   
+                    for(int i = 0; i < robots.length; i++) {
+                    	float distanceTo = robots[i].getLocation().distanceTo(rc.getLocation());
+                    	if(distanceTo < smallestDistance) {
+                    		closest = i;
+                    		smallestDistance = distanceTo;
+                    	}
+                    }
+                    
+                    rc.broadcast(2,(int)robots[closest].location.x);
+                    rc.broadcast(3,(int)robots[closest].location.y);
+                    
+                    if (robots.length > 2 && rc.canFireTriadShot()) {
+                    	 rc.fireTriadShot(myLocation.directionTo(robots[closest].location));
                     }
                     
                     // And we have enough bullets, and haven't attacked yet this turn...
                     if (rc.canFireSingleShot()) {
                         // ...Then fire a bullet in the direction of the enemy.
-                        rc.fireSingleShot(rc.getLocation().directionTo(robots[0].location));
+                        rc.fireSingleShot(myLocation.directionTo(robots[0].location));
                         
                     }
-                    combat = -10;
+                    
+                    if(Math.sqrt(smallestDistance) < Math.sqrt(rc.getType().strideRadius * rc.getType().strideRadius) * .5)
+                    	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
+                    else
+                    	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
                 }
               
 
                 	// Move randomly
+                if(!rc.hasMoved())
                 	wander();
                 
 
