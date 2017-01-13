@@ -88,15 +88,15 @@ idea {
 }
 
 // Default configuration for running matches.
-if (!project.hasProperty("teamA")) {
-    ext.teamA = "mainplayer"
-}
-if (!project.hasProperty("teamB")) {
+
+    ext.teamA = "testplayer"
+
+
     ext.teamB = "testplayer"
-}
-if (!project.hasProperty("maps")) {
-    ext.maps = "barrier"
-}
+
+
+    ext.maps = "Barrier"
+
 
 // Here we define a task. Tasks like this one, 'unpackClient', can be
 // executed in the terminal with `./gradlew unpackClient` in Unix or
