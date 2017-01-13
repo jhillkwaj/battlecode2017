@@ -333,9 +333,6 @@ public strictfp class RobotPlayer {
                     if (  rc.canFireTriadShot() && ( robots[closest].type == RobotType.GARDENER 
                     		|| robots[closest].type == RobotType.ARCHON || robots.length > 2 )) {
                     	
-                    	if(rc.canFirePentadShot())
-                    		rc.firePentadShot(myLocation.directionTo(robots[closest].location));
-                    	else
                     	 rc.fireTriadShot(myLocation.directionTo(robots[closest].location));
                     }
                     

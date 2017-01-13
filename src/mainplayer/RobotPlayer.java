@@ -141,7 +141,7 @@ public strictfp class RobotPlayer {
                 {
                 	income += bullets - lastBullets;
 	                if(income >= 100 * rc.readBroadcast(4) && bullets >= 100) {
-	                	System.out.println("Thank You! ");
+	                	//System.out.println("Thank You! ");
 	                	income -= 100 * rc.readBroadcast(4);
 	                	rc.donate(10 * (1 + (rc.getRoundNum()/300)));
 	                	
@@ -313,7 +313,7 @@ public strictfp class RobotPlayer {
                 if (robots.length > 0) {
                 	
                     
-                    int closest = 0;
+                	int closest = 0;
                     float smallestDistance = Float.MAX_VALUE;
                    
                     for(int i = 0; i < robots.length; i++) {
@@ -327,21 +327,45 @@ public strictfp class RobotPlayer {
                     rc.broadcast(2,(int)robots[closest].location.x);
                     rc.broadcast(3,(int)robots[closest].location.y);
                     
-                    if (robots.length > 2 && rc.canFireTriadShot()) {
+                    //fire three shots against multiple enemies, gardeners, or archons
+                    if (  rc.canFireTriadShot() && ( robots[closest].type == RobotType.GARDENER 
+                    		|| robots[closest].type == RobotType.ARCHON || robots.length > 2 )) {
+                    	
                     	 rc.fireTriadShot(myLocation.directionTo(robots[closest].location));
                     }
                     
                     // And we have enough bullets, and haven't attacked yet this turn...
                     if (rc.canFireSingleShot()) {
                         // ...Then fire a bullet in the direction of the enemy.
-                        rc.fireSingleShot(myLocation.directionTo(robots[0].location));
+                        rc.fireSingleShot(myLocation.directionTo(robots[closest].location));
                         
                     }
-                    
-                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER  ||
-                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .7)
-                    	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
-                    else
+                    //move closer to the enemy
+                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
+                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .7) {
+                    	 MapLocation myLoc = rc.getLocation();
+                    	 
+                    	 //calculate the radius of the enemy
+                    	 int enemyRad = 1;
+                    	 if(robots[closest].type == RobotType.ARCHON )
+                    		 enemyRad = 2;
+
+                    	 //if you can move right next to the enemy
+                    	 if(smallestDistance - 1 - enemyRad <= rc.getType().strideRadius &&
+                    			 rc.canMove(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad) ) {
+                    		 
+                    		 rc.move(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad);
+                    		 
+                    		 rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+
+                    		 
+                    	 }
+                    	 else { //just move closer
+                    		 tryMove(directionTwords( myLoc, robots[closest].location));
+
+                    	 }
+                    }
+                    else //move further away from the enemy
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
                 }
               
@@ -406,9 +430,6 @@ public strictfp class RobotPlayer {
                     rc.broadcast(2,(int)robots[closest].location.x);
                     rc.broadcast(3,(int)robots[closest].location.y);
                     
-                    if (robots.length > 2 && rc.canFireTriadShot()) {
-                    	 rc.fireTriadShot(myLocation.directionTo(robots[closest].location));
-                    }
                     
                     // And we have enough bullets, and haven't attacked yet this turn...
                     if (rc.canFireSingleShot()) {
@@ -416,12 +437,35 @@ public strictfp class RobotPlayer {
                         rc.fireSingleShot(myLocation.directionTo(robots[closest].location));
                         
                     }
-                    
+                    //move closer to the enemy
                     if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
-                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .7)
-                    	tryMove(directionTwords( rc.getLocation(), robots[closest].location));
-                    else
+                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .7) {
+                    	 MapLocation myLoc = rc.getLocation();
+                    	 
+                    	 //calculate the radius of the enemy
+                    	 int enemyRad = 1;
+                    	 if(robots[closest].type == RobotType.ARCHON )
+                    		 enemyRad = 2;
+
+                    	 //if you can move right next to the enemy
+                    	 if(smallestDistance - 1 - enemyRad <= rc.getType().strideRadius &&
+                    			 rc.canMove(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad) ) {
+                    		 
+                    		 rc.move(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad);
+                    		 
+                    		 rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+
+                    		 
+                    	 }
+                    	 else { //just move closer
+                    		 tryMove(directionTwords( myLoc, robots[closest].location));
+
+                    	 }
+                    }
+                    else //move further away from the enemy
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
+                    
+                   
                 }
               
 
@@ -531,7 +575,7 @@ public strictfp class RobotPlayer {
                // if a tree is targeted move closer to it or chop it
 	       		if(treeInfo != null) {
 	       			
-	       			System.out.println("try chop " + treeInfo.ID);
+	       			//System.out.println("try chop " + treeInfo.ID);
 	       			if(rc.canChop(treeInfo.ID) && !rc.hasAttacked()) {
 	        			rc.chop(treeInfo.ID);
 	        			standStill = true;
@@ -646,7 +690,7 @@ public strictfp class RobotPlayer {
     	}
     	//iterate through each unit type and select the best one to produce next
     	for(int i = 1 + bestRatio; i < armyRatios.length; i++) {
-    		System.out.println(" " + armyRatios[i] + " " + armyRatios[bestRatio]);
+    		//System.out.println(" " + armyRatios[i] + " " + armyRatios[bestRatio]);
     		if(armyRatios[i] < armyRatios[bestRatio]) {
     			bestRatio = i;
     		}
@@ -655,7 +699,7 @@ public strictfp class RobotPlayer {
     	if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0)
     		return 2;
     	
-    	System.out.println("Build " + bestRatio);
+    	//System.out.println("Build " + bestRatio);
     	return bestRatio;
     	
     }
