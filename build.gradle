@@ -89,13 +89,13 @@ idea {
 
 // Default configuration for running matches.
 if (!project.hasProperty("teamA")) {
-    ext.teamA = "testplayer"
+    ext.teamA = "mainplayer"
 }
 if (!project.hasProperty("teamB")) {
     ext.teamB = "testplayer"
 }
 if (!project.hasProperty("maps")) {
-    ext.maps = "MagicWood"
+    ext.maps = "barrier"
 }
 
 // Here we define a task. Tasks like this one, 'unpackClient', can be

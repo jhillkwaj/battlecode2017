@@ -1,7 +1,5 @@
-package testplayer;
+package mainplayer;
 import battlecode.common.*;
-
-
 
 public strictfp class RobotPlayer {
 	
