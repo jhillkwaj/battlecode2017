@@ -83,10 +83,6 @@ public strictfp class RobotPlayer {
         Team enemy = rc.getTeam().opponent();
         //flee to range of 10
         combat = -1000;
-        //the bullets the team had the last time the loop ran
-        float lastBullets = 300;
-        //bullets gained since last donation
-        float income = 0;
 
         //broadcast unit creation
         rc.broadcast(4,rc.readBroadcast(4) + 1);
@@ -136,21 +132,7 @@ public strictfp class RobotPlayer {
 //                rc.broadcast(0,(int)myLocation.x);
 //                rc.broadcast(1,(int)myLocation.y);
                 
-                //TODO buy victory points
-                float bullets = rc.getTeamBullets();
-                
-                if(bullets > lastBullets)
-                {
-                	income += bullets - lastBullets;
-	                if(income >= 100 * rc.readBroadcast(4) && bullets >= 100) {
-	                	//System.out.println("Thank You! ");
-	                	income -= 100 * rc.readBroadcast(4);
-	                	rc.donate(10 * (1 + (rc.getRoundNum()/300)));
-	                	
-	                }
-                }
-
-                lastBullets = rc.getTeamBullets();
+               
                 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -669,7 +651,7 @@ public strictfp class RobotPlayer {
 
     	//check for victory
     	float bullets = rc.getTeamBullets();
-    	if((int)(bullets / 10) + rc.getTeamVictoryPoints() >= 1000) {
+    	if((int)(bullets / 10)  >= 1000 || rc.getRoundNum() >= rc.getRoundLimit() - 1) {
         	rc.donate(bullets);
         }
     	
