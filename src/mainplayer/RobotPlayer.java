@@ -27,16 +27,20 @@ public strictfp class RobotPlayer {
 	
     static RobotController rc;
     
+    static RobotType type;
+    
     //direction to move in
     static Direction targetDirection = null;
     //set to 1 to go into combat, < 0 to avoid at that range, 0 to scout
     static int combat = -100;
-    //has this unity seen the enemy yet
-    static boolean seenEnemy = false;
     //
     static int[] signalLoc = new int[2];
     //
     static boolean broadcastDeath = false;
+    //nearby bullets
+    static BulletInfo[] nearbyBullets;
+    //will a bullet hit the unit
+    static boolean bulletWillHit;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -50,11 +54,11 @@ public strictfp class RobotPlayer {
         // and to get information on its current status.
         RobotPlayer.rc = rc;
 
-       
+        type = rc.getType();
         
         // Here, we've separated the controls into a different method for each RobotType.
         // You can add the missing ones or rewrite this into your own control structure.
-        switch (rc.getType()) {
+        switch (type) {
             case ARCHON:
                 runArchon();
                 break;
@@ -90,6 +94,9 @@ public strictfp class RobotPlayer {
         
         // The code you want your robot to perform every round should be in this loop
         while (true) {
+        	
+        	nearbyBullets = rc.senseNearbyBullets();
+        	bulletWillHit = willBulletHitMe(rc.getLocation());
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
@@ -159,6 +166,9 @@ public strictfp class RobotPlayer {
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
+        	
+        	nearbyBullets = rc.senseNearbyBullets();
+        	bulletWillHit = willBulletHitMe(rc.getLocation());
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
@@ -246,7 +256,6 @@ public strictfp class RobotPlayer {
        					
        					if(!rc.hasMoved()) {
        	 	       			wander(10);
-       	 	       			System.out.println("Wander a");
        					}
        					
        				}
@@ -257,7 +266,6 @@ public strictfp class RobotPlayer {
                 //TODO improve on this
  	       		if(!rc.hasMoved())
 	       			wander(10);
- 	       			System.out.println("Wander b");
  	       		}
  	       		
 
@@ -284,8 +292,13 @@ public strictfp class RobotPlayer {
         while (true) {
         	
         	
+        	
         	combat = 1;
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
+        	
+     
+        	
+        	
             try {
             	if(!broadcastDeath && rc.getHealth() < 20) {
             		rc.broadcast(6,rc.readBroadcast(6) - 1);
@@ -329,9 +342,13 @@ public strictfp class RobotPlayer {
                         rc.fireSingleShot(myLocation.directionTo(robots[closest].location));
                         
                     }
+                    
+                    nearbyBullets = rc.senseNearbyBullets();
+                	bulletWillHit = willBulletHitMe(rc.getLocation());
+                    
                     //move closer to the enemy
                     if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
-                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .7) {
+                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .4) {
                     	 MapLocation myLoc = rc.getLocation();
                     	 
                     	 //calculate the radius of the enemy
@@ -343,9 +360,13 @@ public strictfp class RobotPlayer {
                     	 if(smallestDistance - 1 - enemyRad <= rc.getType().strideRadius &&
                     			 rc.canMove(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad) ) {
                     		 
-                    		 rc.move(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad);
-                    		 
-                    		 rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+                    		 if(safeToMove(rc.getLocation().add(directionTwords( myLoc, robots[closest].location),
+                    				 smallestDistance - 1 - enemyRad))) {
+	                    		 
+                    			 rc.move(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad);
+	                    		 rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+	                    		 
+                    		 }
 
                     		 
                     	 }
@@ -356,6 +377,10 @@ public strictfp class RobotPlayer {
                     }
                     else //move further away from the enemy
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
+                }
+                else {
+                	nearbyBullets = rc.senseNearbyBullets();
+                	bulletWillHit = willBulletHitMe(rc.getLocation());
                 }
               
 
@@ -385,6 +410,8 @@ public strictfp class RobotPlayer {
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
+        	
+        	
         	
         	
         	combat = 0;
@@ -426,9 +453,12 @@ public strictfp class RobotPlayer {
                         rc.fireSingleShot(myLocation.directionTo(robots[closest].location));
                         
                     }
+                    
+                    nearbyBullets = rc.senseNearbyBullets();
+                	bulletWillHit = willBulletHitMe(rc.getLocation());
                     //move closer to the enemy
                     if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
-                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .7) {
+                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .4) {
                     	 MapLocation myLoc = rc.getLocation();
                     	 
                     	 //calculate the radius of the enemy
@@ -440,9 +470,13 @@ public strictfp class RobotPlayer {
                     	 if(smallestDistance - 1 - enemyRad <= rc.getType().strideRadius &&
                     			 rc.canMove(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad) ) {
                     		 
+                    		 
+                    		 if(safeToMove(rc.getLocation().add(directionTwords( myLoc, robots[closest].location),
+                    				 smallestDistance - 1 - enemyRad))) {
                     		 rc.move(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad);
                     		 
                     		 rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+                    		 }
 
                     		 
                     	 }
@@ -455,6 +489,10 @@ public strictfp class RobotPlayer {
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
                     
                    
+                }
+                else {
+                	nearbyBullets = rc.senseNearbyBullets();
+                	bulletWillHit = willBulletHitMe(rc.getLocation());
                 }
               
 
@@ -485,6 +523,9 @@ public strictfp class RobotPlayer {
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
+        	
+        	nearbyBullets = rc.senseNearbyBullets();
+        	bulletWillHit = willBulletHitMe(rc.getLocation());
         	
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
@@ -716,7 +757,7 @@ public strictfp class RobotPlayer {
     static boolean tryMove(Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
 
         // First, try intended direction
-        if (rc.canMove(dir)) {
+        if (rc.canMove(dir) && safeToMove(rc.getLocation().add(dir, type.strideRadius))) {
             rc.move(dir);
             return true;
         }
@@ -727,12 +768,14 @@ public strictfp class RobotPlayer {
 
         while(currentCheck<=checksPerSide) {
             // Try the offset of the left side
-            if(rc.canMove(dir.rotateLeftDegrees(degreeOffset*currentCheck))) {
+            if(rc.canMove(dir.rotateLeftDegrees(degreeOffset*currentCheck)) 
+            		&& safeToMove(rc.getLocation().add(dir.rotateLeftDegrees(degreeOffset*currentCheck), type.strideRadius))) {
                 rc.move(dir.rotateLeftDegrees(degreeOffset*currentCheck));
                 return true;
             }
             // Try the offset on the right side
-            if(rc.canMove(dir.rotateRightDegrees(degreeOffset*currentCheck))) {
+            if(rc.canMove(dir.rotateRightDegrees(degreeOffset*currentCheck))
+            		&& safeToMove(rc.getLocation().add(dir.rotateRightDegrees(degreeOffset*currentCheck), type.strideRadius))) {
                 rc.move(dir.rotateRightDegrees(degreeOffset*currentCheck));
                 return true;
             }
@@ -744,6 +787,21 @@ public strictfp class RobotPlayer {
         return false;
     }
 
+    static boolean safeToMove(MapLocation moveLoc) {
+    	if(!willBulletHitMe(moveLoc))
+    		return true;
+    	return false;
+    }
+    
+    static boolean willBulletHitMe(MapLocation mapLocation){
+    	for(int i = 0; i < nearbyBullets.length && i < 6; i++) {
+    		if(willCollideWithMe(nearbyBullets[i],mapLocation)) {
+    			return true;
+    		}
+    	}
+    	return false;
+    }
+    
     /**
      * A slightly more complicated example function, this returns true if the given bullet is on a collision
      * course with the current robot. Doesn't take into account objects between the bullet and this robot.
@@ -751,9 +809,9 @@ public strictfp class RobotPlayer {
      * @param bullet The bullet in question
      * @return True if the line of the bullet's path intersects with this robot's current position.
      */
-    static boolean willCollideWithMe(BulletInfo bullet) {
+    static boolean willCollideWithMe(BulletInfo bullet, MapLocation myLocation) {
 
-        MapLocation myLocation = rc.getLocation();
+    
         
         // Get relevant bullet information
         Direction propagationDirection = bullet.dir;

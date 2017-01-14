@@ -92,7 +92,7 @@ idea {
     ext.teamA = "testplayer"
 
 
-    ext.teamB = "testplayer"
+    ext.teamB = "mainplayer"
 
 
     ext.maps = "Barrier"
