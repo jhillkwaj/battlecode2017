@@ -243,7 +243,8 @@ public strictfp class RobotPlayer {
          		   //TODO use a better algorithm for doing this. Maybe check for bullets or robots or pick closest one
          		   if(tree.getTeam() == myTeam) {
          			   boolean canWaterTree = rc.canWater(tree.ID);
-         			   if(water == true && (treeInfo == null || tree.health < treeInfo.health || (canWaterTree && !canWaterTreeInfo))) {
+         			   if(water == true && (treeInfo == null || (tree.health < treeInfo.health && (canWaterTree || !canWaterTreeInfo))
+         					   || (canWaterTree && !canWaterTreeInfo))) {
          				   treeInfo = tree;
          				   canWaterTreeInfo = canWaterTree;
          				   
@@ -261,8 +262,11 @@ public strictfp class RobotPlayer {
        				else {
        					tryMove(directionTwords( rc.getLocation(), treeInfo.location));
        					
-       					if(!rc.hasMoved())
+       					if(!rc.hasMoved()) {
        	 	       			wander(10);
+       	 	       			System.out.println("Wander a");
+       					}
+       					
        				}
  	       			
                  }
@@ -271,6 +275,7 @@ public strictfp class RobotPlayer {
                 //TODO improve on this
  	       		if(!rc.hasMoved())
 	       			wander(10);
+ 	       			System.out.println("Wander b");
  	       		}
  	       		
 
