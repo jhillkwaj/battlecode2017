@@ -709,7 +709,7 @@ public strictfp class RobotPlayer {
     	//see if there are any archons or if this unit is an archon. Only in this case can gardeners be produced
     	if(archon || rc.readBroadcast(4) > 0) {
     		
-    		if(rc.readBroadcast(5) < 2)
+    		if(rc.readBroadcast(5) < 2 )
     			return 0;
     					
     		bestRatio = 0;
