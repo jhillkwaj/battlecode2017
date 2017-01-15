@@ -1,4 +1,6 @@
 package mainplayer;
+import java.util.Random;
+
 import battlecode.common.*;
 
 
@@ -22,7 +24,7 @@ public strictfp class RobotPlayer {
 	////////////////////////////////////////
 	
 	// Gardener, soldier, lumberjack, tank, scout
-	static float[] buildOrder = {4, 3, 0, 0, 3};
+	static float[] buildOrder = {6, 3, 0, 0, 3};
 	
     static RobotController rc;
     
@@ -40,6 +42,8 @@ public strictfp class RobotPlayer {
     static BulletInfo[] nearbyBullets;
     //will a bullet hit the unit
     static boolean bulletWillHit;
+    
+    static Random random;
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -54,6 +58,8 @@ public strictfp class RobotPlayer {
         RobotPlayer.rc = rc;
 
         type = rc.getType();
+        
+        random = new Random(rc.getID());
         
         // Here, we've separated the controls into a different method for each RobotType.
         // You can add the missing ones or rewrite this into your own control structure.
@@ -176,6 +182,7 @@ public strictfp class RobotPlayer {
 //                rc.broadcast(1,(int)myLocation.y);
                 
                
+                canPickTrees();
                 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -238,21 +245,21 @@ public strictfp class RobotPlayer {
                 //TODO come up with a better way for doing this
                 int buildType = chooseProduction(false);
                 
-                if (buildType == 1 && rc.canBuildRobot(RobotType.SOLDIER, dir)) {
+                if (buildAxis != null && buildType == 1 && rc.canBuildRobot(RobotType.SOLDIER, dir)) {
                     rc.buildRobot(RobotType.SOLDIER, dir);
                   //broadcast unit creation
                     rc.broadcast(6,rc.readBroadcast(6) + 1);
-                } else if (buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) {
+                } else if (buildAxis != null && buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) {
                     rc.buildRobot(RobotType.LUMBERJACK, dir);
                 }
-                else if (buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) {
+                else if (buildAxis != null && buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) {
                     rc.buildRobot(RobotType.SCOUT, dir);
                 }
                 
                
                 //plant a tree
                 if(buildAxis != null || (!rc.isCircleOccupied(rc.getLocation().add(dir, 2.01f), 1) 
-                		&& rc.onTheMap(rc.getLocation().add(dir, 2.01f), 1) && rc.senseNearbyRobots(4).length == 0)) {
+                		&& rc.onTheMap(rc.getLocation().add(dir, 2.01f), 1) )) {
                 	
                 	for(int addDir = 60; addDir < 360; addDir += 60) {
 	                	if(rc.canPlantTree(dir.rotateRightDegrees(addDir))) {
@@ -308,7 +315,8 @@ public strictfp class RobotPlayer {
 	       			wander(10);
  	       		}
  	       		
-
+ 	       		canPickTrees();
+ 	       	
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
 
@@ -324,7 +332,7 @@ public strictfp class RobotPlayer {
         System.out.println("I'm an soldier!");
         Team enemy = rc.getTeam().opponent();
         
-        
+        int age = rc.getRoundNum();
       
 
         // The code you want your robot to perform every round should be in this loop
@@ -371,7 +379,7 @@ public strictfp class RobotPlayer {
                     
                     //fire three shots against multiple enemies, gardeners, or archons
                     if (  rc.canFireTriadShot() && ( robots[closest].type == RobotType.GARDENER 
-                    		|| robots[closest].type == RobotType.ARCHON || robots.length > 2 ) ) {
+                    		|| robots[closest].type == RobotType.ARCHON || robots.length > 1 ) ) {
                     	
                     	 rc.fireTriadShot(myLocation.directionTo(robots[closest].location));
                     }
@@ -387,8 +395,8 @@ public strictfp class RobotPlayer {
                 	bulletWillHit = willBulletHitMe(rc.getLocation());
                     
                     //move closer to the enemy
-                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
-                    		smallestDistance > rc.getType().sensorRadius  * .7f) {
+                    if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER 
+                    		|| robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius  * .7f) {
                     	 MapLocation myLoc = rc.getLocation();
                     	 
                     	 //calculate the radius of the enemy
@@ -433,6 +441,7 @@ public strictfp class RobotPlayer {
                 if(!rc.hasMoved())
                 	wander(10);
                 
+                canPickTrees();
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -505,7 +514,7 @@ public strictfp class RobotPlayer {
                 	bulletWillHit = willBulletHitMe(rc.getLocation());
                     //move closer to the enemy
                     if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
-                    		smallestDistance > rc.getType().sensorRadius * .7) {
+                    		robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius * .7) {
                     	 MapLocation myLoc = rc.getLocation();
                     	 
                     	 //calculate the radius of the enemy
@@ -551,6 +560,7 @@ public strictfp class RobotPlayer {
                 if(!rc.hasMoved())
                 	wander(10);
                 
+                canPickTrees();
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -675,6 +685,8 @@ public strictfp class RobotPlayer {
             	if(!standStill && !rc.hasMoved()) {
             		wander(10);
             	}
+            	
+            	canPickTrees();
 
                 // Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
                 Clock.yield();
@@ -691,7 +703,7 @@ public strictfp class RobotPlayer {
      * @return a random Direction
      */
     static Direction randomDirection() {
-        return new Direction((float)Math.random() * 2 * (float)Math.PI);
+        return new Direction(random.nextFloat() * 2 * (float)Math.PI);
     }
     
     static Direction directionTwords(MapLocation objLoc, MapLocation towardsLoc) {
@@ -728,7 +740,7 @@ public strictfp class RobotPlayer {
     	}
     	
     	
-    	if(targetDirection == null || Math.random() < .05f)
+    	if(targetDirection == null || random.nextFloat() < .05f)
     		targetDirection = randomDirection();
     	
     	if(!tryMove(targetDirection)) {
@@ -780,6 +792,15 @@ public strictfp class RobotPlayer {
     	//System.out.println("Build " + bestRatio);
     	return bestRatio;
     	
+    }
+    
+    public static void canPickTrees() throws GameActionException {
+    	TreeInfo[] nearbyTrees = rc.senseNearbyTrees();
+    	for(TreeInfo tree : nearbyTrees) {
+    		if(tree.containedBullets > 0 && !rc.hasAttacked() && rc.canShake(tree.ID)) {
+    			rc.shake(tree.ID);
+    		}
+    	}
     }
 
     /**
