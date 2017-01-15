@@ -2,14 +2,13 @@ package mainplayer;
 import battlecode.common.*;
 
 
-
 public strictfp class RobotPlayer {
 	
 	////////////////////////////////////////
 	// SIGNAL ARRAY (add new signals here)
 	///////////////////////////////////////
 	// 0 - Unused
-	// 1 - unused
+	// 1 - guess loc
 	// 2 - Enemy Sighting x
 	// 3 - Enemy Sighting y
 	// 4 - Archon count
@@ -23,7 +22,7 @@ public strictfp class RobotPlayer {
 	////////////////////////////////////////
 	
 	// Gardener, soldier, lumberjack, tank, scout
-	static float[] buildOrder = {4, 3, 1, 0, 3};
+	static float[] buildOrder = {4, 3, 0, 0, 3};
 	
     static RobotController rc;
     
@@ -91,15 +90,22 @@ public strictfp class RobotPlayer {
         //broadcast unit creation
         rc.broadcast(4,rc.readBroadcast(4) + 1);
         
+        boolean guessLoc = false;
+        float spyX = 0;
+        float spyY = 0;
+        
         
         // The code you want your robot to perform every round should be in this loop
         while (true) {
         	
-        	nearbyBullets = rc.senseNearbyBullets();
-        	bulletWillHit = willBulletHitMe(rc.getLocation());
+        	
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+            	
+            	nearbyBullets = rc.senseNearbyBullets();
+            	bulletWillHit = willBulletHitMe(rc.getLocation());
+            	
             	
             	if(!broadcastDeath && rc.getHealth() < 20) {
             		rc.broadcast(4,rc.readBroadcast(4) - 1);
@@ -108,12 +114,42 @@ public strictfp class RobotPlayer {
 
                 // Generate a random direction
                 Direction dir = randomDirection();
+                MapLocation myLoc = rc.getLocation();
+                
+                if(rc.readBroadcast(1) == 0) {
+                	rc.broadcast(1, 1);
+                	guessLoc = true;
+                }
+                if(guessLoc) {         	
+                	if((spyX == 0 && spyX == 0) || (spyX == rc.readBroadcast(2) && spyY == rc.readBroadcast(3))) {
+                		MapLocation[] spyLocs =  rc.senseBroadcastingRobotLocations();
+                		boolean newSpy = false;
+                		for(MapLocation loc : spyLocs) {
+                    		if((spyX == 0 && spyX == 0) || myLoc.distanceTo(loc) >= myLoc.distanceTo(new MapLocation(spyX, spyY))) {
+                    			spyX = loc.x;
+                    			spyY = loc.y;
+                    			newSpy = true;
+                    		}
+                    		
+                    	}
+                		if(newSpy) {
+                			rc.broadcast(2,(int)spyX);
+                            rc.broadcast(3,(int)spyY);
+                		}
+                	}
+                	else {
+                		guessLoc = false;
+                	}
+                	
+                	
+                }
 
 
                 // Randomly attempt to build a gardener in this direction
                 // TODO come up with a better way to decide when to do this
                 if ( rc.canHireGardener(dir) && chooseProduction(true) == 0) {
                     rc.hireGardener(dir);
+                    rc.broadcast(5,rc.readBroadcast(5) + 1);
                 }
                 
                 
@@ -158,7 +194,7 @@ public strictfp class RobotPlayer {
         combat = -60;
         
         //broadcast unit creation
-        rc.broadcast(5,rc.readBroadcast(5) + 1);
+        
        
         Direction buildAxis = null;
         
@@ -176,6 +212,8 @@ public strictfp class RobotPlayer {
             		rc.broadcast(5,rc.readBroadcast(5) - 1);
             		broadcastDeath = true;
             	}
+            	
+            	rc.senseBroadcastingRobotLocations();
 
 
                 // Generate a random direction
@@ -202,6 +240,8 @@ public strictfp class RobotPlayer {
                 
                 if (buildType == 1 && rc.canBuildRobot(RobotType.SOLDIER, dir)) {
                     rc.buildRobot(RobotType.SOLDIER, dir);
+                  //broadcast unit creation
+                    rc.broadcast(6,rc.readBroadcast(6) + 1);
                 } else if (buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) {
                     rc.buildRobot(RobotType.LUMBERJACK, dir);
                 }
@@ -285,8 +325,7 @@ public strictfp class RobotPlayer {
         Team enemy = rc.getTeam().opponent();
         
         
-      //broadcast unit creation
-        rc.broadcast(6,rc.readBroadcast(6) + 1);
+      
 
         // The code you want your robot to perform every round should be in this loop
         while (true) {
@@ -320,18 +359,19 @@ public strictfp class RobotPlayer {
                    
                     for(int i = 0; i < robots.length; i++) {
                     	float distanceTo = robots[i].getLocation().distanceTo(rc.getLocation());
-                    	if(distanceTo < smallestDistance) {
+                    	if(distanceTo < smallestDistance && (rc.getRoundNum() > 300 || robots[i].type != RobotType.ARCHON)) {
                     		closest = i;
                     		smallestDistance = distanceTo;
                     	}
                     }
                     
+                    if(robots[closest].type != RobotType.ARCHON) {
                     rc.broadcast(2,(int)robots[closest].location.x);
                     rc.broadcast(3,(int)robots[closest].location.y);
                     
                     //fire three shots against multiple enemies, gardeners, or archons
                     if (  rc.canFireTriadShot() && ( robots[closest].type == RobotType.GARDENER 
-                    		|| robots[closest].type == RobotType.ARCHON || robots.length > 2 )) {
+                    		|| robots[closest].type == RobotType.ARCHON || robots.length > 2 ) ) {
                     	
                     	 rc.fireTriadShot(myLocation.directionTo(robots[closest].location));
                     }
@@ -348,7 +388,7 @@ public strictfp class RobotPlayer {
                     
                     //move closer to the enemy
                     if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
-                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .4) {
+                    		smallestDistance > rc.getType().sensorRadius  * .7f) {
                     	 MapLocation myLoc = rc.getLocation();
                     	 
                     	 //calculate the radius of the enemy
@@ -364,7 +404,7 @@ public strictfp class RobotPlayer {
                     				 smallestDistance - 1 - enemyRad))) {
 	                    		 
                     			 rc.move(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad);
-	                    		 rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+	            
 	                    		 
                     		 }
 
@@ -377,6 +417,11 @@ public strictfp class RobotPlayer {
                     }
                     else //move further away from the enemy
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
+                    }
+                    else {
+                    	nearbyBullets = rc.senseNearbyBullets();
+                    	bulletWillHit = willBulletHitMe(rc.getLocation());
+                    }
                 }
                 else {
                 	nearbyBullets = rc.senseNearbyBullets();
@@ -414,7 +459,7 @@ public strictfp class RobotPlayer {
         	
         	
         	
-        	combat = 0;
+        	combat = 1;
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
             	if(!broadcastDeath && rc.getHealth() < 15) {
@@ -437,11 +482,13 @@ public strictfp class RobotPlayer {
                    
                     for(int i = 0; i < robots.length; i++) {
                     	float distanceTo = robots[i].getLocation().distanceTo(rc.getLocation());
-                    	if(distanceTo < smallestDistance) {
+                    	if(distanceTo < smallestDistance && (rc.getRoundNum() > 300 || robots[i].type != RobotType.ARCHON) ) {
                     		closest = i;
                     		smallestDistance = distanceTo;
                     	}
                     }
+                    
+                    if(rc.getRoundNum() > 300 || robots[closest].type != RobotType.ARCHON) {
                     
                     rc.broadcast(2,(int)robots[closest].location.x);
                     rc.broadcast(3,(int)robots[closest].location.y);
@@ -458,7 +505,7 @@ public strictfp class RobotPlayer {
                 	bulletWillHit = willBulletHitMe(rc.getLocation());
                     //move closer to the enemy
                     if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
-                    		Math.sqrt(smallestDistance) > Math.sqrt(rc.getType().sensorRadius * rc.getType().sensorRadius) * .4) {
+                    		smallestDistance > rc.getType().sensorRadius * .7) {
                     	 MapLocation myLoc = rc.getLocation();
                     	 
                     	 //calculate the radius of the enemy
@@ -475,7 +522,7 @@ public strictfp class RobotPlayer {
                     				 smallestDistance - 1 - enemyRad))) {
                     		 rc.move(directionTwords( myLoc, robots[closest].location), smallestDistance - 1 - enemyRad);
                     		 
-                    		 rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+                    		 
                     		 }
 
                     		 
@@ -488,7 +535,11 @@ public strictfp class RobotPlayer {
                     else //move further away from the enemy
                     	tryMove(directionTwords( robots[closest].location, rc.getLocation()));
                     
-                   
+                    }
+                    else {
+                    	nearbyBullets = rc.senseNearbyBullets();
+                    	bulletWillHit = willBulletHitMe(rc.getLocation());
+                    }
                 }
                 else {
                 	nearbyBullets = rc.senseNearbyBullets();
@@ -709,14 +760,11 @@ public strictfp class RobotPlayer {
     	//see if there are any archons or if this unit is an archon. Only in this case can gardeners be produced
     	if(archon || rc.readBroadcast(4) > 0) {
     		
-    		if(rc.readBroadcast(5) < 2 )
-    			return 0;
+
     					
     		bestRatio = 0;
-    		//if there are no gardeners and one could be made, make one
-    		if(armyRatios[0] == 0 || rc.getTeamBullets() > 400) {
-    			return 0;
-    		}
+    		
+    		
     	}
     	//iterate through each unit type and select the best one to produce next
     	for(int i = 1 + bestRatio; i < armyRatios.length; i++) {
@@ -726,7 +774,7 @@ public strictfp class RobotPlayer {
     		}
     	}
     	
-    	if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0)
+    	if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0 && rc.readBroadcast(5) >= 2)
     		return 2;
     	
     	//System.out.println("Build " + bestRatio);

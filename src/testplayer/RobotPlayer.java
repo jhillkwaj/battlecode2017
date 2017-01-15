@@ -9,7 +9,7 @@ public strictfp class RobotPlayer {
 	// SIGNAL ARRAY (add new signals here)
 	///////////////////////////////////////
 	// 0 - Unused
-	// 1 - unused
+	// 1 - guess loc
 	// 2 - Enemy Sighting x
 	// 3 - Enemy Sighting y
 	// 4 - Archon count
@@ -91,15 +91,22 @@ public strictfp class RobotPlayer {
         //broadcast unit creation
         rc.broadcast(4,rc.readBroadcast(4) + 1);
         
+        boolean guessLoc = false;
+        float spyX = 0;
+        float spyY = 0;
+        
         
         // The code you want your robot to perform every round should be in this loop
         while (true) {
         	
-        	nearbyBullets = rc.senseNearbyBullets();
-        	bulletWillHit = willBulletHitMe(rc.getLocation());
+        	
 
             // Try/catch blocks stop unhandled exceptions, which cause your robot to explode
             try {
+            	
+            	nearbyBullets = rc.senseNearbyBullets();
+            	bulletWillHit = willBulletHitMe(rc.getLocation());
+            	
             	
             	if(!broadcastDeath && rc.getHealth() < 20) {
             		rc.broadcast(4,rc.readBroadcast(4) - 1);
@@ -108,6 +115,35 @@ public strictfp class RobotPlayer {
 
                 // Generate a random direction
                 Direction dir = randomDirection();
+                MapLocation myLoc = rc.getLocation();
+                
+                if(rc.readBroadcast(1) == 0) {
+                	rc.broadcast(1, 1);
+                	guessLoc = true;
+                }
+                if(guessLoc) {         	
+                	if((spyX == 0 && spyX == 0) || (spyX == rc.readBroadcast(2) && spyY == rc.readBroadcast(3))) {
+                		MapLocation[] spyLocs =  rc.senseBroadcastingRobotLocations();
+                		boolean newSpy = false;
+                		for(MapLocation loc : spyLocs) {
+                    		if((spyX == 0 && spyX == 0) || myLoc.distanceTo(loc) >= myLoc.distanceTo(new MapLocation(spyX, spyY))) {
+                    			spyX = loc.x;
+                    			spyY = loc.y;
+                    			newSpy = true;
+                    		}
+                    		
+                    	}
+                		if(newSpy) {
+                			rc.broadcast(2,(int)spyX);
+                            rc.broadcast(3,(int)spyY);
+                		}
+                	}
+                	else {
+                		guessLoc = false;
+                	}
+                	
+                	
+                }
 
 
                 // Randomly attempt to build a gardener in this direction
@@ -177,6 +213,8 @@ public strictfp class RobotPlayer {
             		rc.broadcast(5,rc.readBroadcast(5) - 1);
             		broadcastDeath = true;
             	}
+            	
+            	rc.senseBroadcastingRobotLocations();
 
 
                 // Generate a random direction
