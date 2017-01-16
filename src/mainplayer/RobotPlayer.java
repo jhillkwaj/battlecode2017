@@ -4,6 +4,7 @@ import java.util.Random;
 import battlecode.common.*;
 
 
+
 public strictfp class RobotPlayer {
 	
 	////////////////////////////////////////
@@ -258,8 +259,8 @@ public strictfp class RobotPlayer {
                 
                
                 //plant a tree
-                if(buildAxis != null || (!rc.isCircleOccupied(rc.getLocation().add(dir, 2.01f), 1) 
-                		&& rc.onTheMap(rc.getLocation().add(dir, 2.01f), 1) )) {
+                if((buildAxis != null || ( (!rc.isCircleOccupied(rc.getLocation().add(dir, 2.01f), 1) 
+                		&& rc.senseNearbyTrees(5, rc.getTeam()).length == 0 ) && rc.onTheMap(rc.getLocation().add(dir, 2.01f), 1) ))) {
                 	
                 	for(int addDir = 60; addDir < 360; addDir += 60) {
 	                	if(rc.canPlantTree(dir.rotateRightDegrees(addDir))) {
