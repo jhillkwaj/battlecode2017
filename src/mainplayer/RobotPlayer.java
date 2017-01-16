@@ -97,9 +97,7 @@ public strictfp class RobotPlayer {
         //broadcast unit creation
         rc.broadcast(4,rc.readBroadcast(4) + 1);
         
-        boolean guessLoc = false;
-        float spyX = 0;
-        float spyY = 0;
+
         
         
         // The code you want your robot to perform every round should be in this loop
@@ -125,31 +123,11 @@ public strictfp class RobotPlayer {
                 
                 if(rc.readBroadcast(1) == 0) {
                 	rc.broadcast(1, 1);
-                	guessLoc = true;
+                	MapLocation startLoc = rc.getInitialArchonLocations(enemy)[0];
+                	rc.broadcast(2, (int)startLoc.x);
+                	rc.broadcast(3, (int)startLoc.y);
                 }
-                if(guessLoc) {         	
-                	if((spyX == 0 && spyX == 0) || (spyX == rc.readBroadcast(2) && spyY == rc.readBroadcast(3))) {
-                		MapLocation[] spyLocs =  rc.senseBroadcastingRobotLocations();
-                		boolean newSpy = false;
-                		for(MapLocation loc : spyLocs) {
-                    		if((spyX == 0 && spyX == 0) || myLoc.distanceTo(loc) >= myLoc.distanceTo(new MapLocation(spyX, spyY))) {
-                    			spyX = loc.x;
-                    			spyY = loc.y;
-                    			newSpy = true;
-                    		}
-                    		
-                    	}
-                		if(newSpy) {
-                			rc.broadcast(2,(int)spyX);
-                            rc.broadcast(3,(int)spyY);
-                		}
-                	}
-                	else {
-                		guessLoc = false;
-                	}
-                	
-                	
-                }
+                
 
 
                 // Randomly attempt to build a gardener in this direction
