@@ -26,9 +26,3 @@ battlecode-scaffold.iws
 .classpath
 .project
 .settings/
-
-# Test Gradle IntelliJ
-/gradle/wrapper/gradle-wrapper.properties
-/gradlew
-/gradlew.bat
-
