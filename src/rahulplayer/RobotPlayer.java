@@ -24,7 +24,6 @@ public strictfp class RobotPlayer {
 	// 11+ unused
 	////////////////////////////////////////
 
-
 	static float[] buildOrder = {2, 1, 0, 0, 8};
 	static RobotController rc;
 	static RobotType type; // robot's type
