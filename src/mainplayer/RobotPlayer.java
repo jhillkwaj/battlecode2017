@@ -217,6 +217,7 @@ public strictfp class RobotPlayer {
 				}
 				else if (buildAxis != null && buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) {
 					rc.buildRobot(RobotType.SCOUT, dir);
+					rc.broadcast(10,1-rc.readBroadcast(10));
 				}
 
 				// Plant trees
@@ -431,13 +432,13 @@ public strictfp class RobotPlayer {
 		rc.broadcast(9,rc.readBroadcast(9) + 1);
 
 		// target only gardeners if 1
-		float p = rc.readBroadcast(10);
+		float onlyTargetGardener = rc.readBroadcast(10);
 
 		// The code you want your robot to perform every round should be in this loop
 		while (true) {
 			// Try/catch blocks stop unhandled exceptions, which cause your robot to explode
 			try {
-				System.out.println(" ***** Scout " + rc.getID() + ": " + p + " *****");
+				System.out.println(" ***** Scout " + rc.getID() + ": " + onlyTargetGardener + " *****");
 
 				// engage enemy in combat
 				combat = 1;
@@ -504,7 +505,7 @@ public strictfp class RobotPlayer {
 								tryMove(directionTwords( myLoc, robots[closestGardener].location));
 							}
 						}
-						else if((p==1) && (robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
+						else if((onlyTargetGardener==1) && (robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
 								robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius * .7)) {  // no gardener nearby
 							System.out.println(" ***** THERE IS NO GARDENER AND THIS IS AN ERROR ***** ");
 							MapLocation myLoc = rc.getLocation();
@@ -525,7 +526,7 @@ public strictfp class RobotPlayer {
 							}
 						}
 						else {//move further away from the enemy
-							if (p == 1) {
+							if (onlyTargetGardener == 1) {
 								System.out.println(" ***** ERROR #2 ****");
 								tryMove(directionTwords(robots[closest].location, rc.getLocation()));
 							}
