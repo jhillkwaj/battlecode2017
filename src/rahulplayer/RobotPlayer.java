@@ -1,6 +1,9 @@
 package rahulplayer;
 import java.util.Random;
+
 import battlecode.common.*;
+
+
 
 public strictfp class RobotPlayer {
 
@@ -30,7 +33,7 @@ public strictfp class RobotPlayer {
 	static int[] signalLoc = new int[2];
 	static boolean broadcastDeath = false; // broadcasted death
 	static BulletInfo[] nearbyBullets; // all incoming bullets
-	static boolean bulletWillHit; // stores whether a bullet will hit
+	static boolean charge;
 
 	static Random random;
 
@@ -45,6 +48,7 @@ public strictfp class RobotPlayer {
 		RobotPlayer.rc = rc;
 		type = rc.getType();
 		random = new Random(rc.getID());
+		
 
 		// Here, we've separated the controls into a different method for each RobotType.
 		// You can add the missing ones or rewrite this into your own control structure.
@@ -84,10 +88,6 @@ public strictfp class RobotPlayer {
 		// find enemy archon starting locations
 		MapLocation[] oppArchons = rc.getInitialArchonLocations(enemy);
 
-		// Guess enemy's current location
-		boolean guessLoc = false;
-		float spyX = 0;
-		float spyY = 0;
 
 		// The code you want your robot to perform every round should be in this loop
 		while (true) {
@@ -95,7 +95,6 @@ public strictfp class RobotPlayer {
 			try {
 				// Check for incoming bullets
 				nearbyBullets = rc.senseNearbyBullets();
-				bulletWillHit = willBulletHitMe(rc.getLocation());
 				// TODO: FIND A WAY TO AVOID INCOMING BULLETS
 
 				// Check for death
@@ -109,29 +108,9 @@ public strictfp class RobotPlayer {
 
 				// Find the enemy on the map
 				if(rc.readBroadcast(1) == 0) {
-					rc.broadcast(1, 1);
-					guessLoc = true;
-				}
-				if(guessLoc) {
-					if((spyX == 0 && spyY == 0) || (spyX == rc.readBroadcast(2) && spyY == rc.readBroadcast(3))) {
-						MapLocation[] spyLocs =  rc.senseBroadcastingRobotLocations();
-						boolean newSpy = false;
-						for(MapLocation loc : spyLocs) {
-							if((spyX == 0 && spyY == 0) || myLoc.distanceTo(loc) >= myLoc.distanceTo(new MapLocation(spyX, spyY))) {
-								spyX = loc.x;
-								spyY = loc.y;
-								newSpy = true;
-							}
-
-						}
-						if(newSpy) {
-							rc.broadcast(2,(int)spyX);
-							rc.broadcast(3,(int)spyY);
-						}
-					}
-					else {
-						guessLoc = false;
-					}
+					MapLocation startLoc = rc.getInitialArchonLocations(enemy)[0];
+					rc.broadcast(2, (int)startLoc.x);
+					rc.broadcast(3, (int)startLoc.y);
 				}
 
 
@@ -196,7 +175,6 @@ public strictfp class RobotPlayer {
 			try {
 				// Check for incoming bullets
 				nearbyBullets = rc.senseNearbyBullets();
-				bulletWillHit = willBulletHitMe(rc.getLocation());
 
 				// broadcast death
 				if(!broadcastDeath && rc.getHealth() < 20) {
@@ -223,18 +201,16 @@ public strictfp class RobotPlayer {
 				int buildType = chooseProduction(false);
 				if (buildAxis != null && buildType == 1 && rc.canBuildRobot(RobotType.SOLDIER, dir)) {
 					rc.buildRobot(RobotType.SOLDIER, dir);
-					rc.broadcast(6,rc.readBroadcast(6) + 1);
 				} else if (buildAxis != null && buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) {
 					rc.buildRobot(RobotType.LUMBERJACK, dir);
 				}
 				else if (buildAxis != null && buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) {
 					rc.buildRobot(RobotType.SCOUT, dir);
-					rc.broadcast(10,1-rc.readBroadcast(10));
 				}
 
 				// Plant trees
-				if(buildAxis != null || (!rc.isCircleOccupied(rc.getLocation().add(dir, 2.01f), 1)
-						&& rc.onTheMap(rc.getLocation().add(dir, 2.01f), 1) )) {
+				 if((buildAxis != null || ( (!rc.isCircleOccupied(rc.getLocation().add(dir, 2.01f), 1) 
+						 && rc.senseNearbyTrees(5, rc.getTeam()).length == 0 ) && rc.onTheMap(rc.getLocation().add(dir, 2.01f), 1) ))) {
 
 					for(int addDir = 60; addDir < 360; addDir += 60) {
 						if(rc.canPlantTree(dir.rotateRightDegrees(addDir))) {
@@ -306,6 +282,7 @@ public strictfp class RobotPlayer {
 		for(int i=0; i<temp.length; i++) {
 			if(temp[i].type == RobotType.GARDENER) myGardener = temp[i];
 		}
+		rc.broadcast(6,rc.readBroadcast(6) + 1);
 		//if(myGardener == null)
 
 		// The code you want your robot to perform every round should be in this loop
@@ -356,7 +333,6 @@ public strictfp class RobotPlayer {
 						}
 
 						nearbyBullets = rc.senseNearbyBullets();
-						bulletWillHit = willBulletHitMe(rc.getLocation());
 
 						//move closer to the enemy
 						if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER
@@ -392,12 +368,10 @@ public strictfp class RobotPlayer {
 					}
 					else {
 						nearbyBullets = rc.senseNearbyBullets();
-						bulletWillHit = willBulletHitMe(rc.getLocation());
 					}
 				}
 				else {
 					nearbyBullets = rc.senseNearbyBullets();
-					bulletWillHit = willBulletHitMe(rc.getLocation());
 				}
 
 
@@ -496,7 +470,6 @@ public strictfp class RobotPlayer {
 						}
 
 						nearbyBullets = rc.senseNearbyBullets();
-						bulletWillHit = willBulletHitMe(rc.getLocation());
 
 						// Move based on type of sensed robot
 						if(closestGardener!=-1) { // if there is a gardener nearby
@@ -547,12 +520,10 @@ public strictfp class RobotPlayer {
 					}
 					else { // within round 300 and closest is archon
 						nearbyBullets = rc.senseNearbyBullets();
-						bulletWillHit = willBulletHitMe(rc.getLocation());
 					}
 				}
 				else { // no robots nearby
 					nearbyBullets = rc.senseNearbyBullets();
-					bulletWillHit = willBulletHitMe(rc.getLocation());
 				}
 
 
@@ -591,8 +562,8 @@ public strictfp class RobotPlayer {
 			// Try/catch blocks stop unhandled exceptions, which cause your robot to explode
 			try {
 				// sense nearby bullets
+				charge = false;
 				nearbyBullets = rc.senseNearbyBullets();
-				bulletWillHit = willBulletHitMe(rc.getLocation());
 
 				// broadcast death
 				if(!broadcastDeath && rc.getHealth() < 20) {
@@ -665,6 +636,7 @@ public strictfp class RobotPlayer {
 						rc.broadcast(3, (int) robots[closest].location.y);
 
 						//and move closer to it
+						charge = true;
 						tryMove(directionTwords(rc.getLocation(), robots[closest].location));
 					}
 				}
@@ -744,15 +716,16 @@ public strictfp class RobotPlayer {
 
 		// Trade in for VP at the last round
 		float bullets = rc.getTeamBullets();
-		if(rc.getRoundNum() >= rc.getRoundLimit() - 1) {
+		if(bullets >= 10000 || rc.getRoundNum() >= rc.getRoundLimit() - 1) {
 			rc.donate(bullets);
 		}
 
 		//Calculate the number of each unit compared to the desired number
 		float[] armyRatios = {(float)rc.readBroadcast(5) / buildOrder[0],
-				(float)rc.readBroadcast(6) / buildOrder[1], (float)rc.readBroadcast(7) / buildOrder[2],
+				((float)rc.readBroadcast(6) + 1) / buildOrder[1], (float)rc.readBroadcast(7) / buildOrder[2],
 				(float)rc.readBroadcast(8) / buildOrder[3], (float)rc.readBroadcast(9) / buildOrder[4]}; // {gardener, soldier, lumberjack, tank, scout
 
+		
 		//store the best one to create
 		int bestRatio = -1;
 
@@ -767,6 +740,9 @@ public strictfp class RobotPlayer {
 		// TODO: Determine whether there are trees on the map
 		if(archon && rc.readBroadcast(5)==0) return 0;
 		if(rc.readBroadcast(9)==0) return 4;
+		
+		if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0 && rc.readBroadcast(5) >= 2)
+    		return 2;
 
 		System.out.println("** bestRatio : " + bestRatio);
 		System.out.println("** Gardener  : #=" + rc.readBroadcast(5) + "; /=" + rc.readBroadcast(5)/buildOrder[0]);
@@ -844,7 +820,7 @@ public strictfp class RobotPlayer {
 	}
 
 	static boolean safeToMove(MapLocation moveLoc) {
-		if(!willBulletHitMe(moveLoc))
+		if(charge || !willBulletHitMe(moveLoc))
 			return true;
 		return false;
 	}
