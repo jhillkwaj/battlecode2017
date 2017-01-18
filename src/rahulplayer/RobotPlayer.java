@@ -49,6 +49,7 @@ public strictfp class RobotPlayer {
 		RobotPlayer.rc = rc;
 		type = rc.getType();
 		random = new Random(rc.getID());
+		
 
 		// Here, we've separated the controls into a different method for each RobotType.
 		// You can add the missing ones or rewrite this into your own control structure.
@@ -716,15 +717,16 @@ public strictfp class RobotPlayer {
 
 		// Trade in for VP at the last round
 		float bullets = rc.getTeamBullets();
-		if(rc.getRoundNum() >= rc.getRoundLimit() - 1) {
+		if(bullets >= 10000 || rc.getRoundNum() >= rc.getRoundLimit() - 1) {
 			rc.donate(bullets);
 		}
 
 		//Calculate the number of each unit compared to the desired number
 		float[] armyRatios = {(float)rc.readBroadcast(5) / buildOrder[0],
-				(float)rc.readBroadcast(6) / buildOrder[1], (float)rc.readBroadcast(7) / buildOrder[2],
+				((float)rc.readBroadcast(6) + 1) / buildOrder[1], (float)rc.readBroadcast(7) / buildOrder[2],
 				(float)rc.readBroadcast(8) / buildOrder[3], (float)rc.readBroadcast(9) / buildOrder[4]}; // {gardener, soldier, lumberjack, tank, scout
 
+		
 		//store the best one to create
 		int bestRatio = -1;
 
@@ -739,6 +741,9 @@ public strictfp class RobotPlayer {
 		// TODO: Determine whether there are trees on the map
 		if(archon && rc.readBroadcast(5)==0) return 0;
 		if(rc.readBroadcast(9)==0) return 4;
+		
+		if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0 && rc.readBroadcast(5) >= 2)
+    		return 2;
 
 		System.out.println("** bestRatio : " + bestRatio);
 		System.out.println("** Gardener  : #=" + rc.readBroadcast(5) + "; /=" + rc.readBroadcast(5)/buildOrder[0]);

@@ -5,6 +5,8 @@ import battlecode.common.*;
 
 
 
+
+
 public strictfp class RobotPlayer {
 
 	////////////////////////////////////////
@@ -37,6 +39,8 @@ public strictfp class RobotPlayer {
 	static boolean charge;
 
 	static Random random;
+	
+	static boolean rush = false;
 
 	/**
 	 * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -49,6 +53,15 @@ public strictfp class RobotPlayer {
 		RobotPlayer.rc = rc;
 		type = rc.getType();
 		random = new Random(rc.getID());
+		
+		if(!rush) {
+		
+			buildOrder[0] = 6;
+			buildOrder[1] = 3;
+			buildOrder[2] = 0;
+			buildOrder[3] = 0;
+			buildOrder[4] = 2;
+		}
 
 		// Here, we've separated the controls into a different method for each RobotType.
 		// You can add the missing ones or rewrite this into your own control structure.
@@ -275,12 +288,11 @@ public strictfp class RobotPlayer {
 		System.out.println("I'm an soldier!");
 		Team enemy = rc.getTeam().opponent();
 
-		int age = rc.getRoundNum();
 
 		RobotInfo myGardener = null;
 		RobotInfo[] temp = rc.senseNearbyRobots(-1, rc.getTeam());
 		for(int i=0; i<temp.length; i++) {
-			if(temp[i].type == RobotType.GARDENER) myGardener = temp[i];
+			if(temp[i].type == RobotType.GARDENER && rush) myGardener = temp[i];
 		}
 		rc.broadcast(6,rc.readBroadcast(6) + 1);
 		//if(myGardener == null)
@@ -373,30 +385,33 @@ public strictfp class RobotPlayer {
 				else {
 					nearbyBullets = rc.senseNearbyBullets();
 				}
-
-
-				robots = rc.senseNearbyRobots(-1, rc.getTeam());
-				boolean closeToGardener = false;
-				boolean tooCloseToGardener = false;
-				myLocation = rc.getLocation();
-				for(int i=0; !closeToGardener && i<robots.length; i++) {
-					if(robots[i].type == RobotType.GARDENER) {
-						if(robots[i].ID == myGardener.ID) closeToGardener = true;
-						if(rc.getLocation().distanceTo(robots[i].location)<myGardener.getRadius()+4) tooCloseToGardener = true;
+				
+				if(myGardener != null) {
+					robots = rc.senseNearbyRobots(-1, rc.getTeam());
+					boolean closeToGardener = false;
+					boolean tooCloseToGardener = false;
+					myLocation = rc.getLocation();
+					for(int i=0; !closeToGardener && i<robots.length; i++) {
+						if(robots[i].type == RobotType.GARDENER) {
+							if(robots[i].ID == myGardener.ID) closeToGardener = true;
+							if(rc.getLocation().distanceTo(robots[i].location)<myGardener.getRadius()+4) tooCloseToGardener = true;
+						}
+					}
+					if(!closeToGardener) { // too far
+						tryMove(myLocation.directionTo(myGardener.location));
+					}
+					if(tooCloseToGardener) { // too close
+						tryMove(randomDirection());
+					}
+					if(!rc.hasMoved()) { // otherwise
+						Direction dir = myGardener.location.directionTo(myLocation);
+						dir.rotateLeftDegrees(3);
+						tryMove(myLocation.directionTo(myGardener.location.add(dir, myGardener.location.distanceTo(myLocation))));
 					}
 				}
-				if(!closeToGardener) { // too far
-					tryMove(myLocation.directionTo(myGardener.location));
+				else {
+					wander(10);
 				}
-				if(tooCloseToGardener) { // too close
-					tryMove(randomDirection());
-				}
-				if(!rc.hasMoved()) { // otherwise
-					Direction dir = myGardener.location.directionTo(myLocation);
-					dir.rotateLeftDegrees(3);
-					tryMove(myLocation.directionTo(myGardener.location.add(dir, myGardener.location.distanceTo(myLocation))));
-				}
-
 				canPickTrees();
 
 				// Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
@@ -716,15 +731,16 @@ public strictfp class RobotPlayer {
 
 		// Trade in for VP at the last round
 		float bullets = rc.getTeamBullets();
-		if(rc.getRoundNum() >= rc.getRoundLimit() - 1) {
+		if(bullets >= 10000 || rc.getRoundNum() >= rc.getRoundLimit() - 1) {
 			rc.donate(bullets);
 		}
 
 		//Calculate the number of each unit compared to the desired number
 		float[] armyRatios = {(float)rc.readBroadcast(5) / buildOrder[0],
-				(float)rc.readBroadcast(6) / buildOrder[1], (float)rc.readBroadcast(7) / buildOrder[2],
+				((float)rc.readBroadcast(6) ) / buildOrder[1], (float)rc.readBroadcast(7) / buildOrder[2],
 				(float)rc.readBroadcast(8) / buildOrder[3], (float)rc.readBroadcast(9) / buildOrder[4]}; // {gardener, soldier, lumberjack, tank, scout
 
+		
 		//store the best one to create
 		int bestRatio = -1;
 
@@ -738,7 +754,10 @@ public strictfp class RobotPlayer {
 
 		// TODO: Determine whether there are trees on the map
 		if(archon && rc.readBroadcast(5)==0) return 0;
-		if(rc.readBroadcast(9)==0) return 4;
+		if(rush && rc.readBroadcast(9)==0) return 4;
+		
+		if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0 && rc.readBroadcast(5) >= 2)
+    		return 2;
 
 		System.out.println("** bestRatio : " + bestRatio);
 		System.out.println("** Gardener  : #=" + rc.readBroadcast(5) + "; /=" + rc.readBroadcast(5)/buildOrder[0]);
@@ -752,15 +771,15 @@ public strictfp class RobotPlayer {
 	}
 
 	public static void canPickTrees() throws GameActionException {
-		TreeInfo[] nearbyTrees = rc.senseNearbyTrees();
-		TreeInfo bestTree = null;
-		for(TreeInfo tree : nearbyTrees) {
-			if(bestTree==null || (tree.containedBullets > bestTree.containedBullets && rc.canShake(tree.ID))) {
-				bestTree = tree;
-			}
-		}
-		rc.shake(bestTree.ID);
-	}
+		//You can't do it the way it was done it Rahul player because it generates exceptions in some 
+		//cases and breaks gardeners when modified to not generate exceptions for some reason
+    	TreeInfo[] nearbyTrees = rc.senseNearbyTrees();
+    	for(TreeInfo tree : nearbyTrees) {
+    		if(tree.containedBullets > 0 && !rc.hasAttacked() && rc.canShake(tree.ID)) {
+    			rc.shake(tree.ID);
+    		}
+    	}
+    }
 
 	/**
 	 * Attempts to move in a given direction, while avoiding small obstacles directly in the path.
