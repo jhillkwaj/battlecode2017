@@ -462,14 +462,14 @@ public strictfp class RobotPlayer {
 		// target only gardeners if 1
 		float onlyTargetGardener = rc.readBroadcast(10);
 
-		// The code you want your robot to perform every round should be in this loop
+        // engage enemy in combat
+        combat = 1-(int)onlyTargetGardener;
+
+        // The code you want your robot to perform every round should be in this loop
 		while (true) {
 			// Try/catch blocks stop unhandled exceptions, which cause your robot to explode
 			try {
 				System.out.println(" ***** Scout " + rc.getID() + ": " + onlyTargetGardener + " *****");
-
-				// engage enemy in combat
-				combat = 1;
 
 				// broadcast death
 				if(!broadcastDeath && rc.getHealth() < 15) {
@@ -533,7 +533,7 @@ public strictfp class RobotPlayer {
 								tryMove(directionTwords( myLoc, robots[closestGardener].location));
 							}
 						}
-						else if((onlyTargetGardener==1) && (robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
+						else if((onlyTargetGardener==0) && (robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
 								robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius * .7)) {  // no gardener nearby
 							System.out.println(" ***** THERE IS NO GARDENER AND THIS IS AN ERROR ***** ");
 							MapLocation myLoc = rc.getLocation();
@@ -554,7 +554,7 @@ public strictfp class RobotPlayer {
 							}
 						}
 						else {//move further away from the enemy
-							if (onlyTargetGardener == 1) {
+							if (onlyTargetGardener == 0) {
 								System.out.println(" ***** ERROR #2 ****");
 								tryMove(directionTwords(robots[closest].location, rc.getLocation()));
 							}
