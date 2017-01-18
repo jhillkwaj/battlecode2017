@@ -11,7 +11,7 @@ public strictfp class RobotPlayer {
 	////////////////////////////////////////
 	// SIGNAL ARRAY (add new signals here)
 	///////////////////////////////////////
-	// 0 - Unused
+	// 0 - rush
 	// 1 - guess loc
 	// 2 - Enemy Sighting x
 	// 3 - Enemy Sighting y
@@ -52,6 +52,9 @@ public strictfp class RobotPlayer {
 		RobotPlayer.rc = rc;
 		type = rc.getType();
 		random = new Random(rc.getID());
+		
+		if(rc.readBroadcast(0) == 0)
+			rush = false;
 		
 		if(!rush) {
 			buildOrder[0] = 6;
@@ -122,6 +125,10 @@ public strictfp class RobotPlayer {
 					MapLocation startLoc = rc.getInitialArchonLocations(enemy)[0];
 					rc.broadcast(2, (int)startLoc.x);
 					rc.broadcast(3, (int)startLoc.y);
+					
+					rc.broadcast(1, 1);
+					
+					loadData();
 				}
 
 
@@ -157,6 +164,8 @@ public strictfp class RobotPlayer {
 
 				// Tries to shake a tree
 				canPickTrees();
+				
+				saveData();
 
 				// Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
 				Clock.yield();
@@ -715,7 +724,7 @@ public strictfp class RobotPlayer {
 		}
 
 
-		if(targetDirection == null || random.nextFloat() < .05f)
+		if(targetDirection == null)
 			targetDirection = randomDirection();
 
 		if(!tryMove(targetDirection)) {
@@ -858,6 +867,46 @@ public strictfp class RobotPlayer {
 			}
 		}
 		return false;
+	}
+	
+	static void saveData() throws GameActionException {
+		int unitCount = rc.readBroadcast(5) + rc.readBroadcast(6) + rc.readBroadcast(7) + rc.readBroadcast(8) + rc.readBroadcast(9);
+		
+		rc.setTeamMemory(0, rush ? 2 : 1);
+		rc.setTeamMemory(1, unitCount);
+	}
+	
+	
+	static void loadData() throws GameActionException {
+		int lastRush = (int)rc.getTeamMemory()[0];
+		int lastUnitCount = (int)rc.getTeamMemory()[1];
+		
+		if(lastUnitCount < 6) {
+			rush = lastRush == 2 ? false : true;
+		}
+		else {
+			rush = lastRush == 2 ? true : false;
+		}
+		
+		if(!rush) {
+			rc.setIndicatorDot(rc.getLocation(), 0, 0, 200);
+			rc.broadcast(0, 0);
+			buildOrder[0] = 6;
+			buildOrder[1] = 3;
+			buildOrder[2] = 0;
+			buildOrder[3] = 0;
+			buildOrder[4] = 2;
+		}
+		else {
+			rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+			rc.broadcast(0, 1);
+			buildOrder[0] = 2;
+			buildOrder[1] = 1;
+			buildOrder[2] = 0;
+			buildOrder[3] = 0;
+			buildOrder[4] = 8;
+		}
+		
 	}
 
 	/**
