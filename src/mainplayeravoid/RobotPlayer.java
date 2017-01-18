@@ -514,7 +514,7 @@ public strictfp class RobotPlayer {
 								tryMove(directionTwords( myLoc, robots[closestGardener].location));
 							}
 						}
-						else if((onlyTargetGardener==1) && (robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
+						else if((onlyTargetGardener==0) && (robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
 								robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius * .7)) {  // no gardener nearby
 							System.out.println(" ***** THERE IS NO GARDENER AND THIS IS AN ERROR ***** ");
 							MapLocation myLoc = rc.getLocation();
@@ -535,9 +535,12 @@ public strictfp class RobotPlayer {
 							}
 						}
 						else {//move further away from the enemy
-							if (onlyTargetGardener == 1) {
+							if (onlyTargetGardener == 0) {
 								System.out.println(" ***** ERROR #2 ****");
 								tryMove(directionTwords(robots[closest].location, rc.getLocation()));
+							}
+							else {
+								combat = 0;
 							}
 						}
 					}
@@ -881,30 +884,32 @@ public strictfp class RobotPlayer {
 		int lastRush = (int)rc.getTeamMemory()[0];
 		int lastUnitCount = (int)rc.getTeamMemory()[1];
 
-		if(lastUnitCount < 6) {
-			rush = lastRush == 2 ? false : true;
-		}
-		else {
-			rush = lastRush == 2 ? true : false;
-		}
-
-		if(!rush) {
-			rc.setIndicatorDot(rc.getLocation(), 0, 0, 200);
-			rc.broadcast(0, 0);
-			buildOrder[0] = 6;
-			buildOrder[1] = 3;
-			buildOrder[2] = 0;
-			buildOrder[3] = 0;
-			buildOrder[4] = 2;
-		}
-		else {
-			rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
-			rc.broadcast(0, 1);
-			buildOrder[0] = 2;
-			buildOrder[1] = 1;
-			buildOrder[2] = 0;
-			buildOrder[3] = 0;
-			buildOrder[4] = 8;
+		if(lastRush != 0) {
+			if(lastUnitCount < 6) {
+				rush = lastRush == 2 ? false : true;
+			}
+			else {
+				rush = lastRush == 2 ? true : false;
+			}
+	
+			if(!rush) {
+				rc.setIndicatorDot(rc.getLocation(), 0, 0, 200);
+				rc.broadcast(0, 0);
+				buildOrder[0] = 6;
+				buildOrder[1] = 3;
+				buildOrder[2] = 0;
+				buildOrder[3] = 0;
+				buildOrder[4] = 2;
+			}
+			else {
+				rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
+				rc.broadcast(0, 1);
+				buildOrder[0] = 2;
+				buildOrder[1] = 1;
+				buildOrder[2] = 0;
+				buildOrder[3] = 0;
+				buildOrder[4] = 8;
+			}
 		}
 
 	}
