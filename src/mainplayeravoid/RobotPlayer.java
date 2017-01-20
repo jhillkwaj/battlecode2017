@@ -885,7 +885,7 @@ public strictfp class RobotPlayer {
 		int lastUnitCount = (int)rc.getTeamMemory()[1];
 
 		if(lastRush != 0) {
-			if(lastUnitCount < 6) {
+			if(lastUnitCount < 3) {
 				rush = lastRush == 2 ? false : true;
 			}
 			else {
