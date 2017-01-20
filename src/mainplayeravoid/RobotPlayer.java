@@ -927,7 +927,7 @@ public strictfp class RobotPlayer {
 		rc.setTeamMemory(0, rush ? 2 : 1);
 		rc.setTeamMemory(1, unitCount);
 		
-		if(rc.getRoundNum() > 2000) {
+		if(unitCount > 16) {
 			taunt(rc.getLocation());
 		}
 	}
