@@ -21,8 +21,9 @@ public strictfp class RobotPlayer {
 	// 7 - Lumberjack count
 	// 8 - Tank Count
 	// 9 - Scout Count
-	// 10 - unused
-	// 11+ unused
+	// 10 - Alternate scouts
+	// 11 - unused
+	// 12+ - unused
 	////////////////////////////////////////
 
 
@@ -107,6 +108,8 @@ public strictfp class RobotPlayer {
 		while (true) {
 			// Try/catch blocks stop unhandled exceptions, which cause your robot to explode
 			try {
+				
+				
 				// Check for incoming bullets
 				nearbyBullets = rc.senseNearbyBullets();
 				// TODO: FIND A WAY TO AVOID INCOMING BULLETS
@@ -701,6 +704,11 @@ public strictfp class RobotPlayer {
 	static void wander(int tries) throws GameActionException {
 		if(tries <= 0)
 			return;
+		
+		//Try and move towards a tree with bullets
+		MapLocation treeLoc = moveToBulletTree();
+		if(treeLoc != null)
+			targetDirection = new Direction(rc.getLocation(), treeLoc);
 
 		if(combat != 0 && targetDirection != null) {
 			//run to
@@ -725,6 +733,7 @@ public strictfp class RobotPlayer {
 				}
 			}
 		}
+		
 
 
 		if(targetDirection == null)
@@ -803,6 +812,18 @@ public strictfp class RobotPlayer {
 			}
 		}
 	}
+	
+	
+	//get the location of the nearest tree with bullets
+	public static MapLocation moveToBulletTree() throws GameActionException {
+		TreeInfo[] nearbyTrees = rc.senseNearbyTrees();
+		for(TreeInfo tree : nearbyTrees) {
+			if(tree.containedBullets > 0) {
+				return tree.location;
+			}
+		}
+		return null;
+	}
 
 	/**
 	 * Attempts to move in a given direction, while avoiding small obstacles directly in the path.
@@ -877,6 +898,10 @@ public strictfp class RobotPlayer {
 
 		rc.setTeamMemory(0, rush ? 2 : 1);
 		rc.setTeamMemory(1, unitCount);
+		
+		if(rc.getRoundNum() > 2000) {
+			taunt(rc.getLocation());
+		}
 	}
 
 
@@ -952,6 +977,42 @@ public strictfp class RobotPlayer {
 			// line that is the path of the bullet.
 			float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
 			return (perpendicularDist <= rc.getType().bodyRadius);
+		}
+	}
+	
+	static void taunt(MapLocation m) throws GameActionException {
+		// 0 = don't draw
+		// 1 = black
+		// 2 = burnt orange
+		int[][] art = {
+				{0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0},
+				{0,0,0,0,0,0,0,0,0,0,0,0,1,2,1,0,0,0,0,0},
+				{0,0,0,0,0,1,0,0,0,0,0,0,1,2,1,0,0,0,0,0},
+				{0,0,0,0,1,2,1,0,0,0,0,0,1,2,1,0,0,0,0,0},
+				{0,0,0,0,1,2,1,0,0,0,0,0,1,2,1,0,0,0,0,0},
+				{0,0,0,0,1,2,1,0,1,0,1,0,1,2,1,0,0,0,0,0},
+				{0,0,0,0,1,2,1,1,2,1,2,1,1,2,1,0,0,0,0,0},
+				{0,0,0,0,1,2,2,1,2,1,2,1,2,2,1,0,0,0,0,0},
+				{0,0,0,0,1,2,2,1,2,1,1,1,1,1,1,0,0,0,0,0},
+				{0,0,0,0,1,2,2,2,1,1,2,2,2,2,2,1,0,0,0,0},
+				{0,0,0,0,1,2,2,2,2,1,1,1,1,1,2,1,0,0,0,0},
+				{0,0,0,0,1,2,2,2,2,2,2,2,2,2,2,1,0,0,0,0},
+				{0,0,0,0,1,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0},
+				{0,0,0,0,1,2,2,2,2,2,2,2,2,2,1,0,0,0,0,0},
+				{0,0,0,0,0,1,2,2,2,2,2,2,2,2,1,0,0,0,0,0},
+				{0,0,0,0,0,1,2,2,2,2,2,2,2,1,0,0,0,0,0,0},
+				{0,0,0,0,0,0,1,2,2,2,2,2,1,0,0,0,0,0,0,0},
+				{0,0,0,0,0,0,1,2,2,2,2,2,1,0,0,0,0,0,0,0},
+				{0,0,0,0,0,0,1,2,2,2,2,2,1,0,0,0,0,0,0,0},
+				{0,0,0,0,0,0,1,2,2,2,2,2,1,0,0,0,0,0,0,0}};
+		float dotSize = .5f;
+		for(int y = 0; y < 20; y++) {
+			for(int x = 0; x < 20; x++) {
+				if(art[19-y][x] == 1)
+					rc.setIndicatorDot(new MapLocation(m.x + dotSize * (x - 10),m.y + dotSize * (y - 10)), 255, 255, 255);
+				else if(art[19-y][x] == 2)
+					rc.setIndicatorDot(new MapLocation(m.x + dotSize * (x - 10),m.y + dotSize * (y - 10)), 204, 85, 0);
+			}
 		}
 	}
 }
