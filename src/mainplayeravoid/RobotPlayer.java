@@ -3,9 +3,6 @@ import java.util.Random;
 
 import battlecode.common.*;
 
-
-
-
 public strictfp class RobotPlayer {
 
 	////////////////////////////////////////
@@ -117,6 +114,10 @@ public strictfp class RobotPlayer {
 			// Try/catch blocks stop unhandled exceptions, which cause your robot to explode
 			try {
 				
+				if(!rush)
+					rc.setIndicatorDot(rc.getLocation(), 0, 100, 0);
+				else
+					rc.setIndicatorDot(rc.getLocation(), 100, 0, 0);
 				
 				// Check for incoming bullets
 				nearbyBullets = rc.senseNearbyBullets();
@@ -359,17 +360,6 @@ public strictfp class RobotPlayer {
 						rc.broadcast(2,(int)robots[closest].location.x);
 						rc.broadcast(3,(int)robots[closest].location.y);
 
-						// Fire three shots against multiple enemies, gardeners, or archons
-						if (rc.canFireTriadShot() && (robots[closest].type == RobotType.GARDENER
-								|| robots[closest].type == RobotType.ARCHON || robots.length > 1)) {
-							rc.fireTriadShot(myLoc.directionTo(robots[closest].location));
-						}
-
-						// And we have enough bullets, and haven't attacked yet this turn...
-						if (rc.canFireSingleShot()) {
-							// ...Then fire a bullet in the direction of the enemy.
-							rc.fireSingleShot(myLoc.directionTo(robots[closest].location));
-						}
 
 						// Find the nearest bullets
 						nearbyBullets = rc.senseNearbyBullets();
@@ -397,6 +387,21 @@ public strictfp class RobotPlayer {
 						}
 						else // closest is soldier or lumberjack: move further away
 							tryMove(directionTwords(robots[closest].location, myLoc));
+						
+						
+						
+						// Fire three shots against multiple enemies, gardeners, or archons
+						if (rc.canFireTriadShot() && (robots[closest].type == RobotType.GARDENER
+								|| robots[closest].type == RobotType.ARCHON || robots.length > 1)) {
+							rc.fireTriadShot(myLoc.directionTo(robots[closest].location));
+						}
+
+						// And we have enough bullets, and haven't attacked yet this turn...
+						if (rc.canFireSingleShot()) {
+							// ...Then fire a bullet in the direction of the enemy.
+							rc.fireSingleShot(myLoc.directionTo(robots[closest].location));
+						}
+						
 					}
 					else { // Closest is an archon
 						nearbyBullets = rc.senseNearbyBullets();
@@ -465,7 +470,7 @@ public strictfp class RobotPlayer {
 				System.out.println(" ***** Scout " + rc.getID() + ": " + onlyTargetGardener + " *****");
 
 				// broadcast death
-				if(!broadcastDeath && rc.getHealth() < 15) {
+				if(!broadcastDeath && rc.getHealth() < 8) {
 					rc.broadcast(9,rc.readBroadcast(9) - 1);
 					broadcastDeath = true;
 				}
@@ -500,11 +505,7 @@ public strictfp class RobotPlayer {
 						rc.broadcast(2,(int)robots[closest].location.x);
 						rc.broadcast(3,(int)robots[closest].location.y);
 
-						// If we have enough bullets, and haven't attacked yet this turn...
-						if (rc.canFireSingleShot()) {
-							// ...Then fire a bullet in the direction of the enemy.
-							rc.fireSingleShot(myLocation.directionTo(robots[closest].location));
-						}
+						
 
 						nearbyBullets = rc.senseNearbyBullets();
 
@@ -556,6 +557,14 @@ public strictfp class RobotPlayer {
 								tryMove(directionTwords(robots[closest].location, rc.getLocation()));
 							}
 						}
+						
+						
+						// If we have enough bullets, and haven't attacked yet this turn...
+						if (rc.canFireSingleShot()) {
+							// ...Then fire a bullet in the direction of the enemy.
+							rc.fireSingleShot(myLocation.directionTo(robots[closest].location));
+						}
+						
 					}
 					else { // within round 300 and closest is archon
 						nearbyBullets = rc.senseNearbyBullets();
