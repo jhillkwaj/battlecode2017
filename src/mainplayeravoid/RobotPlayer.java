@@ -922,6 +922,7 @@ public strictfp class RobotPlayer {
 	}
 
 	static void saveData() throws GameActionException {
+		
 		int unitCount = rc.readBroadcast(5) + rc.readBroadcast(6) + rc.readBroadcast(7) + rc.readBroadcast(8) + rc.readBroadcast(9);
 
 		rc.setTeamMemory(0, rush ? 2 : 1);
