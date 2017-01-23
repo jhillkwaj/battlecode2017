@@ -29,7 +29,7 @@ public strictfp class RobotPlayer {
 	static RobotController rc; // RobotController object, used to get information about the robot
 
 	// Constants
-	static float[] buildOrder = {2, 1, 0, 0, 8}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
+	static float[] buildOrder = {2, 4, 0, 0, 4}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
 	static boolean rush = true; // whether to scout rush
 	static RobotType type; // robot's type
 	static int combat = -100; // set to 1 to go into combat, < 0 to avoid at that range, 0 to scout
@@ -247,6 +247,8 @@ public strictfp class RobotPlayer {
 				} else if (buildAxis != null && buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) { // type: scout
 					rc.buildRobot(RobotType.SCOUT, dir);
 					rc.broadcast(10,1-rc.readBroadcast(10)); // broadcast scout creation
+				} else if (buildType == 3 && rc.canBuildRobot(RobotType.TANK, dir)) { // type: soldier
+					rc.buildRobot(RobotType.TANK, dir);
 				}
 
 				// Plant trees
@@ -322,7 +324,7 @@ public strictfp class RobotPlayer {
 		RobotInfo myGardener = null;
 		RobotInfo[] temp = rc.senseNearbyRobots(-1, rc.getTeam());
 		for(int i=0; i<temp.length; i++) {
-			if(temp[i].type == RobotType.GARDENER && rush) myGardener = temp[i];
+			if(temp[i].type == RobotType.GARDENER && rush && false) myGardener = temp[i];
 		}
 
 		// Broadcast creation
@@ -604,10 +606,11 @@ public strictfp class RobotPlayer {
 
 		// trees to chop down
 		int targetTree = -1;
-		boolean standStill = false;
 
 		//broadcast unit creation
 		rc.broadcast(7,rc.readBroadcast(7) + 1);
+		
+		boolean doNotMove = false;
 
 		// The code you want your robot to perform every round should be in this loop
 		while (true) {
@@ -615,6 +618,7 @@ public strictfp class RobotPlayer {
 			try {
 				// sense nearby bullets
 				charge = false;
+				doNotMove = false;
 				nearbyBullets = rc.senseNearbyBullets();
 
 				// broadcast death
@@ -623,16 +627,50 @@ public strictfp class RobotPlayer {
 					broadcastDeath = true;
 				}
 
+				
+				
 				// Attack any nearby robots
-				RobotInfo[] robots = rc.senseNearbyRobots(RobotType.LUMBERJACK.bodyRadius+GameConstants.LUMBERJACK_STRIKE_RADIUS, enemy); // See if there are any enemy robots within striking range (distance 1 from lumberjack's radius)
-				if(robots.length > 0 && !rc.hasAttacked()) { // if so, attack
+				RobotInfo[] robots = rc.senseNearbyRobots(-1, enemy); // See if there are any enemy robots within striking range (distance 1 from lumberjack's radius)
+				
+				
+				// Move towards the closest enemy robot
+				if (robots.length > 0) {
+					// find closest
+					int closest = 0;
+					float smallestDistance = Float.MAX_VALUE;
+					for (int i = 0; i < robots.length; i++) {
+						float distanceTo = robots[i].getLocation().distanceTo(rc.getLocation());
+						if (distanceTo < smallestDistance) {
+							closest = i;
+							smallestDistance = distanceTo;
+						}
+					}
+
+					//broadcast its location
+					rc.broadcast(2, (int) robots[closest].location.x);
+					rc.broadcast(3, (int) robots[closest].location.y);
+
+					//and move closer to it
+					charge = true;
+					tryMove(directionTwords(rc.getLocation(), robots[closest].location));
+				}
+			
+				
+				
+				 robots = rc.senseNearbyRobots(RobotType.LUMBERJACK.bodyRadius+GameConstants.LUMBERJACK_STRIKE_RADIUS, enemy); // See if there are any enemy robots within striking range (distance 1 from lumberjack's radius)
+				if(robots.length > 0 && !rc.hasAttacked()) { // attack them
 					rc.strike();
 				}
+				
+				
+				
+				
+				
+				
 
 				// CHOP NEUTRAL/ENEMY TREES
 				// Get the info on the targeted tree
 				TreeInfo treeInfo = null;
-				standStill = false;
 				if(targetTree != -1) { // we have a target tree
 					if(rc.canSenseTree(targetTree)) // it is within sensor radius
 						treeInfo = rc.senseTree(targetTree); // sense the tree
@@ -643,59 +681,34 @@ public strictfp class RobotPlayer {
 					TreeInfo[] trees = rc.senseNearbyTrees(); // get nearby trees
 					if(trees.length > 0) { // if there is a tree nearby
 						// choose closest tree not on our team
-						float smallestDistanceToTree = Float.MAX_VALUE;
 						for(int i = 0; i < trees.length; i++) {
-							float distanceTo = trees[i].getLocation().distanceTo(rc.getLocation());
-							if(trees[i].team != rc.getTeam() && distanceTo < smallestDistanceToTree) {
+							if(treeInfo==null && trees[i].team != rc.getTeam() ) {
 								treeInfo = trees[i];
 								targetTree = treeInfo.ID;
-								smallestDistanceToTree = distanceTo;
 							}
 						}
 					}
 				}
 
+			
+
+				
+				
 				// if a tree is targeted move closer to it or chop it
 				if(treeInfo != null) {
 					//System.out.println("try chop " + treeInfo.ID);
 					if(rc.canChop(treeInfo.ID)) { // chop the tree
 						rc.chop(treeInfo.ID);
-						standStill = true;
+						doNotMove = true;
 					}
-					else if (!rc.hasMoved()) { // move towards it
+					else if (!doNotMove && !rc.hasMoved()) { // move towards it
 						tryMove(directionTwords(rc.getLocation(), treeInfo.location));
-					}
-				}
-
-				if(!standStill && robots.length == 0) { // no close trees or robots
-					robots = rc.senseNearbyRobots(-1, enemy); // find all nearby robots
-
-					// Move towards the closest enemy robot
-					if (robots.length > 0) {
-						// find closest
-						int closest = 0;
-						float smallestDistance = Float.MAX_VALUE;
-						for (int i = 0; i < robots.length; i++) {
-							float distanceTo = robots[i].getLocation().distanceTo(rc.getLocation());
-							if (distanceTo < smallestDistance) {
-								closest = i;
-								smallestDistance = distanceTo;
-							}
-						}
-
-						//broadcast its location
-						rc.broadcast(2, (int) robots[closest].location.x);
-						rc.broadcast(3, (int) robots[closest].location.y);
-
-						//and move closer to it
-						charge = true;
-						tryMove(directionTwords(rc.getLocation(), robots[closest].location));
 					}
 				}
 
 				// Move randomly
 				// TODO improve on this
-				if(!standStill && !rc.hasMoved()) {
+				if(!doNotMove && !rc.hasMoved()) {
 					wander(10);
 				}
 
@@ -788,8 +801,15 @@ public strictfp class RobotPlayer {
 
 		// Trade in for VP at the last round
 		float bullets = rc.getTeamBullets();
-		if(bullets >= 10000 || rc.getRoundNum() >= rc.getRoundLimit() - 1) {
+		float bulletsPerVp = (float)(7.5 + rc.getRoundNum() * 12.5 / 3000);
+		if((GameConstants.VICTORY_POINTS_TO_WIN - rc.getTeamVictoryPoints()) * bulletsPerVp   <= bullets 
+				|| rc.getRoundNum() >= rc.getRoundLimit() - 1) {
 			rc.donate(bullets);
+		}
+		else if(bullets > 500) {
+			
+			rc.donate((float)bulletsPerVp);
+			return 0;
 		}
 
 		//Quick fix TODO clean this up
@@ -829,7 +849,7 @@ public strictfp class RobotPlayer {
 		// TODO: Determine whether there are trees on the map
 		if(archon && rc.readBroadcast(5)==0) bestRatio = 0;
 		else if(rush && rc.readBroadcast(9)==0) bestRatio = 4;
-		else if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0 && rc.readBroadcast(5) >= 2) bestRatio = 2;
+		else if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0) bestRatio = 2;
 
 		System.out.println("** bestRatio : " + bestRatio);
 		System.out.println("** Gardener  : #=" + rc.readBroadcast(5) + "; /=" + rc.readBroadcast(5)/buildOrder[0]);
@@ -837,6 +857,9 @@ public strictfp class RobotPlayer {
 		System.out.println("** Lumberjack: #=" + rc.readBroadcast(7) + "; /=" + rc.readBroadcast(7)/buildOrder[2]);
 		System.out.println("** Tank      : #=" + rc.readBroadcast(8) + "; /=" + rc.readBroadcast(8)/buildOrder[3]);
 		System.out.println("** Scout     : #=" + rc.readBroadcast(9) + "; /=" + rc.readBroadcast(9)/buildOrder[4]);
+		
+		if(bullets > 300 && bestRatio == 1 && rc.getRoundNum() % 10 != 0)
+			bestRatio = 3;
 
 		return bestRatio;
 	}
@@ -971,10 +994,10 @@ public strictfp class RobotPlayer {
 				rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
 				rc.broadcast(0, 1);
 				buildOrder[0] = 2;
-				buildOrder[1] = 1;
+				buildOrder[1] = 4;
 				buildOrder[2] = 0;
 				buildOrder[3] = 0;
-				buildOrder[4] = 8;
+				buildOrder[4] = 4;
 			}
 		}
 
