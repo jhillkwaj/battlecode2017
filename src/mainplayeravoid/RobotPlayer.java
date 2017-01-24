@@ -102,7 +102,7 @@ public strictfp class RobotPlayer {
 	 **/
 	static void runArchon() throws GameActionException {
 		// Set combat to flee to a distance of 10
-		combat = -1000;
+		combat = -100;
 
 		// Broadcast unit creation
 		rc.broadcast(4,rc.readBroadcast(4) + 1);
@@ -533,7 +533,7 @@ public strictfp class RobotPlayer {
 							}
 						}
 						else if((onlyTargetGardener==0) && (robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER ||
-								robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius * .7)) {
+								robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius * .4)) {
 							// there is no gardener nearby, and oTG = 0, so we combat all units; the closest is not a lumberjack or soldier, or we are greater than 0.7*sensorRad away
 							System.out.println(" ***** THERE IS NO GARDENER SO COMBAT UNITS ***** ");
 							MapLocation myLoc = rc.getLocation();
@@ -747,10 +747,10 @@ public strictfp class RobotPlayer {
 		
 		//Try and move towards a tree with bullets
 		MapLocation treeLoc = moveToBulletTree();
-		if(treeLoc != null)
+		if(combat >= 0 && treeLoc != null)
 			targetDirection = new Direction(rc.getLocation(), treeLoc);
 
-		if(combat != 0 && targetDirection != null) {
+		if((combat != 0 && targetDirection != null)) {
 			//run to
 			int broadcastOne = rc.readBroadcast(2);
 			int broadcastTwo = rc.readBroadcast(3);
@@ -776,7 +776,7 @@ public strictfp class RobotPlayer {
 		
 
 
-		if(targetDirection == null)
+		if(targetDirection == null || random.nextFloat() < .01f)
 			targetDirection = randomDirection();
 
 		if(!tryMove(targetDirection)) {
@@ -804,10 +804,14 @@ public strictfp class RobotPlayer {
 				|| rc.getRoundNum() >= rc.getRoundLimit() - 1) {
 			rc.donate(bullets);
 		}
-		else if(bullets > 500) {
+		else if(bullets > 400) {
+			if(rc.readBroadcast(5) < 3 && archon)
+				return 0;
 			
-			rc.donate((float)bulletsPerVp);
-			return 0;
+			if(bullets > 1000) {
+				rc.donate((float)bulletsPerVp);
+				return 0;
+			}
 		}
 
 		//Quick fix TODO clean this up
@@ -847,7 +851,7 @@ public strictfp class RobotPlayer {
 		// TODO: Determine whether there are trees on the map
 		if(archon && rc.readBroadcast(5)==0) bestRatio = 0;
 		else if(rush && rc.readBroadcast(9)==0) bestRatio = 4;
-		else if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0) bestRatio = 2;
+		else if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0 && rc.readBroadcast(7) < rc.readBroadcast(6) + 2) bestRatio = 2;
 
 		System.out.println("** bestRatio : " + bestRatio);
 		System.out.println("** Gardener  : #=" + rc.readBroadcast(5) + "; /=" + rc.readBroadcast(5)/buildOrder[0]);
