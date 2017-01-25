@@ -208,6 +208,8 @@ public strictfp class RobotPlayer {
 
 		// Whether we should water
 		boolean water = false;
+		
+		int built = 1;
 
 		// The code you want your robot to perform every round should be in this loop
 		while (true) {
@@ -241,13 +243,17 @@ public strictfp class RobotPlayer {
 				int buildType = chooseProduction(false); // Get type of robot
 				if (buildAxis != null && buildType == 1 && rc.canBuildRobot(RobotType.SOLDIER, dir)) { // type: soldier
 					rc.buildRobot(RobotType.SOLDIER, dir);
+					built++;
 				} else if (buildAxis != null && buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) { // type: lumberjack
 					rc.buildRobot(RobotType.LUMBERJACK, dir);
+					built++;
 				} else if (buildAxis != null && buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) { // type: scout
 					rc.buildRobot(RobotType.SCOUT, dir);
 					rc.broadcast(10,1-rc.readBroadcast(10)); // broadcast scout creation
+					built++;
 				} else if (buildType == 3 && rc.canBuildRobot(RobotType.TANK, dir)) { // type: soldier
 					rc.buildRobot(RobotType.TANK, dir);
+					built++;
 				}
 
 				// Plant trees
@@ -255,10 +261,13 @@ public strictfp class RobotPlayer {
 						&& rc.senseNearbyTrees(5, rc.getTeam()).length == 0 ) && rc.onTheMap(rc.getLocation().add(dir, 2.01f), 1) ))) { // can plant trees
 
 					for(int addDir = 60; addDir < 360; addDir += 60) { // try all tree directions
-						if(rc.canPlantTree(dir.rotateRightDegrees(addDir))) { // if can plant tree
+						if(rc.canPlantTree(dir.rotateRightDegrees(addDir)) && (built > 0 || rc.getRoundNum() > 400)) { // if can plant tree
 							rc.plantTree(dir.rotateRightDegrees(addDir)); // plant the tree
 							buildAxis = dir;
 							water = true; // start watering
+							
+							if(rush)
+								built--;
 						}
 					}
 				}
@@ -856,7 +865,6 @@ public strictfp class RobotPlayer {
 
 		// TODO: Determine whether there are trees on the map
 		if(archon && rc.readBroadcast(5)==0) bestRatio = 0;
-		else if(rush && rc.readBroadcast(9)==0) bestRatio = 4;
 		else if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0 && rc.readBroadcast(7) < rc.readBroadcast(6) + 2) bestRatio = 2;
 
 		System.out.println("** bestRatio : " + bestRatio);
@@ -982,7 +990,7 @@ public strictfp class RobotPlayer {
 		int lastUnitCount = (int)rc.getTeamMemory()[1];
 
 		if(lastRush != 0) {
-			if(lastUnitCount < 3) {
+			if(lastUnitCount < 5) {
 				rush = lastRush == 2 ? false : true;
 			}
 			else {
