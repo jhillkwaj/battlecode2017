@@ -379,7 +379,7 @@ public strictfp class RobotPlayer {
 
 						//move closer to the enemy if it's not a soldier or lumberjack or we're greater than 0.7*sensorRad away
 						if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER
-								|| robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius  * .7f) {
+								|| robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius  * .3f) {
 							// update location
 							myLoc = rc.getLocation();
 
@@ -402,10 +402,16 @@ public strictfp class RobotPlayer {
 							tryMove(directionTwords(robots[closest].location, myLoc));
 						
 						
+						if (rc.canFirePentadShot()) {
+							if(safeToShoot(myLoc.directionTo(robots[closest].location).rotateLeftDegrees(GameConstants.PENTAD_SPREAD_DEGREES))
+									&& safeToShoot(myLoc.directionTo(robots[closest].location).rotateRightDegrees(GameConstants.PENTAD_SPREAD_DEGREES))
+									&& safeToShoot(myLoc.directionTo(robots[closest].location))) {
+								rc.firePentadShot(myLoc.directionTo(robots[closest].location));
+							}
+						}
 						
 						// Fire three shots against multiple enemies, gardeners, or archons
-						if (rc.canFireTriadShot() && (robots[closest].type == RobotType.GARDENER
-								|| robots[closest].type == RobotType.ARCHON || robots.length > 1)) {
+						if (rc.canFireTriadShot()) {
 							if(safeToShoot(myLoc.directionTo(robots[closest].location).rotateLeftDegrees(GameConstants.TRIAD_SPREAD_DEGREES))
 									&& safeToShoot(myLoc.directionTo(robots[closest].location).rotateRightDegrees(GameConstants.TRIAD_SPREAD_DEGREES))
 									&& safeToShoot(myLoc.directionTo(robots[closest].location))) {
