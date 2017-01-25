@@ -396,13 +396,19 @@ public strictfp class RobotPlayer {
 						// Fire three shots against multiple enemies, gardeners, or archons
 						if (rc.canFireTriadShot() && (robots[closest].type == RobotType.GARDENER
 								|| robots[closest].type == RobotType.ARCHON || robots.length > 1)) {
-							rc.fireTriadShot(myLoc.directionTo(robots[closest].location));
+							if(safeToShoot(myLoc.directionTo(robots[closest].location).rotateLeftDegrees(GameConstants.TRIAD_SPREAD_DEGREES))
+									&& safeToShoot(myLoc.directionTo(robots[closest].location).rotateRightDegrees(GameConstants.TRIAD_SPREAD_DEGREES))
+									&& safeToShoot(myLoc.directionTo(robots[closest].location))) {
+								rc.fireTriadShot(myLoc.directionTo(robots[closest].location));
+							}
 						}
 
 						// And we have enough bullets, and haven't attacked yet this turn...
 						if (rc.canFireSingleShot()) {
 							// ...Then fire a bullet in the direction of the enemy.
-							rc.fireSingleShot(myLoc.directionTo(robots[closest].location));
+							if(safeToShoot(myLoc.directionTo(robots[closest].location))) {
+								rc.fireSingleShot(myLoc.directionTo(robots[closest].location));
+							}
 						}
 						
 					}
@@ -1080,5 +1086,40 @@ public strictfp class RobotPlayer {
 					rc.setIndicatorDot(new MapLocation(m.x + dotSize * (x - 10),m.y + dotSize * (y - 10)), 204, 85, 0);
 			}
 		}
+	}
+
+	static boolean safeToShoot(Direction dir) {
+		RobotInfo robots[] = rc.senseNearbyRobots(-1, myTeam);
+		boolean safe = true;
+		for(int i=0; i<robots.length; i++) {
+			if(willShotCollideWithUnit(dir, robots[i])) {
+				safe = false;
+				break;
+			}
+		}
+		return safe;
+	}
+
+	static boolean willShotCollideWithUnit(Direction dir, RobotInfo unit) {
+		// Get relevant bullet information
+		Direction propagationDirection = dir;
+		MapLocation bulletLocation = rc.getLocation(); // the bullet starts from our location since we fired it
+
+		// Calculate bullet relations to this robot
+		Direction directionToRobot = bulletLocation.directionTo(unit.getLocation());
+		float distToRobot = bulletLocation.distanceTo(unit.getLocation());
+		float theta = propagationDirection.radiansBetween(directionToRobot);
+
+		// If theta > 90 degrees, then the bullet is traveling away from the unit and we can break early
+		if (Math.abs(theta) > Math.PI/2) {
+			return false;
+		}
+
+		// distToRobot is our hypotenuse, theta is our angle, and we want to know this length of the opposite leg.
+		// This is the distance of a line that goes from myLocation and intersects perpendicularly with propagationDirection.
+		// This corresponds to the smallest radius circle centered at the unit's location that would intersect with the
+		// line that is the path of the bullet.
+		float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
+		return (perpendicularDist <= unit.getType().bodyRadius);
 	}
 }
