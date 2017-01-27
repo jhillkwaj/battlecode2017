@@ -1024,9 +1024,16 @@ public strictfp class RobotPlayer {
 
 	static boolean safeToShoot(Direction dir) {
 		RobotInfo robots[] = rc.senseNearbyRobots(-1, myTeam);
+		TreeInfo trees[] = rc.senseNearbyTrees(-1);
 		boolean safe = true;
 		for(int i=0; i<robots.length; i++) {
-			if(willShotCollideWithUnit(dir, robots[i])) {
+			if(willShotCollideWithRobot(dir, robots[i])) {
+				safe = false;
+				break;
+			}
+		}
+		for(int i=0; i<trees.length; i++) {
+			if(!(trees[i].team == enemy) &&  willShotCollideWithTree(dir, trees[i])) {
 				safe = false;
 				break;
 			}
@@ -1034,7 +1041,30 @@ public strictfp class RobotPlayer {
 		return safe;
 	}
 
-	static boolean willShotCollideWithUnit(Direction dir, RobotInfo unit) {
+	static boolean willShotCollideWithTree(Direction dir, TreeInfo unit) {
+		// Get relevant bullet information
+		Direction propagationDirection = dir;
+		MapLocation bulletLocation = rc.getLocation(); // the bullet starts from our location since we fired it
+
+		// Calculate bullet relations to this robot
+		Direction directionToRobot = bulletLocation.directionTo(unit.getLocation());
+		float distToRobot = bulletLocation.distanceTo(unit.getLocation());
+		float theta = propagationDirection.radiansBetween(directionToRobot);
+
+		// If theta > 90 degrees, then the bullet is traveling away from the unit and we can break early
+		if (Math.abs(theta) > Math.PI/2) {
+			return false;
+		}
+
+		// distToRobot is our hypotenuse, theta is our angle, and we want to know this length of the opposite leg.
+		// This is the distance of a line that goes from myLocation and intersects perpendicularly with propagationDirection.
+		// This corresponds to the smallest radius circle centered at the unit's location that would intersect with the
+		// line that is the path of the bullet.
+		float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
+		return (perpendicularDist <= unit.radius);
+	}
+
+	static boolean willShotCollideWithRobot(Direction dir, RobotInfo unit) {
 		// Get relevant bullet information
 		Direction propagationDirection = dir;
 		MapLocation bulletLocation = rc.getLocation(); // the bullet starts from our location since we fired it
