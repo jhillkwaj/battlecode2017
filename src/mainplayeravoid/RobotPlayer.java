@@ -27,7 +27,7 @@ public strictfp class RobotPlayer {
 	static RobotController rc; // RobotController object, used to get information about the robot
 
 
-	static float[] buildOrder = {9, 16, 0, 0, 1}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
+	static float[] buildOrder = {9, 16, 0, 0, 5}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
 	static RobotType type; // robot's type
 	static int combat = -100; // set to 1 to go into combat, < 0 to avoid at that range, 0 to scout
 	static Team enemy;
@@ -450,7 +450,7 @@ public strictfp class RobotPlayer {
 
 				// broadcast death
 				if(!broadcastDeath && rc.getHealth() < 8) {
-					rc.broadcast(9,rc.readBroadcast(9) - 1);
+					//rc.broadcast(9,rc.readBroadcast(9) - 1);
 					broadcastDeath = true;
 				}
 
