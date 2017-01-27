@@ -1023,22 +1023,38 @@ public strictfp class RobotPlayer {
 	}
 
 	static boolean safeToShoot(Direction dir) {
-		RobotInfo robots[] = rc.senseNearbyRobots(-1, myTeam);
+		MapLocation myLoc = rc.getLocation();
+		RobotInfo robots[] = rc.senseNearbyRobots(-1);
 		TreeInfo trees[] = rc.senseNearbyTrees(-1);
+		int robotSpot = 0;
+		int treeSpot = 0;
 		boolean safe = true;
-		for(int i=0; i<robots.length; i++) {
-			if(willShotCollideWithRobot(dir, robots[i])) {
-				safe = false;
-				break;
+		while(robotSpot < robots.length && treeSpot < trees.length) {
+			if(robots[robotSpot].location.distanceTo(myLoc) < trees[treeSpot].location.distanceTo(myLoc)) { // check next robot
+				if(willShotCollideWithRobot(dir, robots[robotSpot])) { // will collide
+					if(robots[robotSpot].team==enemy) return true;
+					else return false;
+				}
+				robotSpot++;
+			}
+			else { // check next tree
+				if(willShotCollideWithTree(dir, trees[treeSpot])) {
+					if(trees[treeSpot].team==enemy) return true;
+					else return false;
+				}
+				treeSpot++;
 			}
 		}
-		for(int i=0; i<trees.length; i++) {
-			if(!(trees[i].team == enemy) &&  willShotCollideWithTree(dir, trees[i])) {
-				safe = false;
-				break;
+		if(robotSpot==robots.length) return false; // no robots left, and we didn't hit any enemies
+		else {
+			for(int i=robotSpot; i<robots.length; i++) {
+				if(willShotCollideWithRobot(dir, robots[i])) {
+					if(robots[robotSpot].team==enemy) return true;
+					else return false;
+				}
 			}
 		}
-		return safe;
+		return false;
 	}
 
 	static boolean willShotCollideWithTree(Direction dir, TreeInfo unit) {
