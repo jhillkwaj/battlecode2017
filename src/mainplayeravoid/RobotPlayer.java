@@ -135,7 +135,7 @@ public strictfp class RobotPlayer {
 
 				// Produce gardeners
 				if(chooseProduction(true) == 0) { // check if I should
-					Direction dir = new Direction(myLoc, oppArchons[0]); // direction roughly facing opponent
+					Direction dir = randomDirection();
 
 					// Try all directions to produce gardener
 					int num = 0;
