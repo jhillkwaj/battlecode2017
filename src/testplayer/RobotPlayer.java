@@ -27,9 +27,8 @@ public strictfp class RobotPlayer {
 
 	static RobotController rc; // RobotController object, used to get information about the robot
 
-	// Constants
-	static float[] buildOrder = {2, 4, 0, 0, 4}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
-	static boolean rush = true; // whether to scout rush
+
+	static float[] buildOrder = {9, 16, 0, 0, 1}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
 	static RobotType type; // robot's type
 	static int combat = -100; // set to 1 to go into combat, < 0 to avoid at that range, 0 to scout
 	static Team enemy;
@@ -62,18 +61,8 @@ public strictfp class RobotPlayer {
 		// Create random object
 		random = new Random(rc.getID());
 
-		// Set rush based on previous match
-		if(rc.readBroadcast(0) == 0)
-			rush = false;
 
-		// Change buildOrder if not rushing
-		if(!rush) {
-			buildOrder[0] = 6;
-			buildOrder[1] = 3;
-			buildOrder[2] = 0;
-			buildOrder[3] = 0;
-			buildOrder[4] = 2;
-		}
+
 
 		// Switch on the RobotType: control passes to the method called here and remains there until the robot dies
 		switch (type) {
@@ -116,10 +105,7 @@ public strictfp class RobotPlayer {
 			// Try/catch blocks stop unhandled exceptions, which cause your robot to explode
 			try {
 				
-				if(!rush)
-					rc.setIndicatorDot(rc.getLocation(), 0, 100, 0);
-				else
-					rc.setIndicatorDot(rc.getLocation(), 100, 0, 0);
+
 				
 				// Check for incoming bullets
 				nearbyBullets = rc.senseNearbyBullets();
@@ -241,17 +227,17 @@ public strictfp class RobotPlayer {
 
 				// Attempt to build a robot
 				int buildType = chooseProduction(false); // Get type of robot
-				if (buildAxis != null && buildType == 1 && rc.canBuildRobot(RobotType.SOLDIER, dir)) { // type: soldier
+				if (buildType == 1 && rc.canBuildRobot(RobotType.SOLDIER, dir)) { // type: soldier
 					rc.buildRobot(RobotType.SOLDIER, dir);
 					built++;
-				} else if (buildAxis != null && buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) { // type: lumberjack
+				} else if (buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) { // type: lumberjack
 					rc.buildRobot(RobotType.LUMBERJACK, dir);
 					built++;
-				} else if (buildAxis != null && buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) { // type: scout
+				} else if (buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) { // type: scout
 					rc.buildRobot(RobotType.SCOUT, dir);
 					rc.broadcast(10,1-rc.readBroadcast(10)); // broadcast scout creation
 					built++;
-				} else if (buildType == 3 && rc.canBuildRobot(RobotType.TANK, dir)) { // type: soldier
+				} else if (rc.canBuildRobot(RobotType.TANK, dir)) { // type: soldier
 					rc.buildRobot(RobotType.TANK, dir);
 					built++;
 				}
@@ -266,8 +252,7 @@ public strictfp class RobotPlayer {
 							buildAxis = dir;
 							water = true; // start watering
 							
-							if(rush)
-								built--;
+
 						}
 					}
 				}
@@ -328,12 +313,6 @@ public strictfp class RobotPlayer {
 		// Set combat to 1: engage enemies
 		combat = 1;
 
-		// Get data about gardener to protect: ONLY IF RUSH
-		RobotInfo myGardener = null;
-		RobotInfo[] temp = rc.senseNearbyRobots(-1, rc.getTeam());
-		for(int i=0; i<temp.length; i++) {
-			if(temp[i].type == RobotType.GARDENER && rush && false) myGardener = temp[i];
-		}
 
 		// Broadcast creation
 		rc.broadcast(6,rc.readBroadcast(6) + 1);
@@ -379,7 +358,7 @@ public strictfp class RobotPlayer {
 
 						//move closer to the enemy if it's not a soldier or lumberjack or we're greater than 0.7*sensorRad away
 						if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER
-								|| robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius  * .3f) {
+								|| robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius  * .5f) {
 							// update location
 							myLoc = rc.getLocation();
 
@@ -436,33 +415,9 @@ public strictfp class RobotPlayer {
 					nearbyBullets = rc.senseNearbyBullets();
 				}
 
-				// Protect closest gardener (ONLY RUSH)
-				if(myGardener != null) {
-					robots = rc.senseNearbyRobots(-1, rc.getTeam()); // get nearby robots
-					boolean closeToGardener = false; // check if we're close enough
-					boolean tooCloseToGardener = false; // check if we're too close (block trees)
-					myLoc = rc.getLocation(); // get current location
-					for(int i=0; !closeToGardener && i<robots.length; i++) {
-						if(robots[i].type == RobotType.GARDENER) {
-							if(robots[i].ID == myGardener.ID) closeToGardener = true; // if this is my gardener, we are close enough
-							if(rc.getLocation().distanceTo(robots[i].location)<myGardener.getRadius()+4) tooCloseToGardener = true; // if within 4 of circle, we are too close
-						}
-					}
-					if(!closeToGardener) { // too far
-						tryMove(myLoc.directionTo(myGardener.location));
-					}
-					if(tooCloseToGardener) { // too close
-						tryMove(randomDirection());
-					}
-					if(!rc.hasMoved()) { // otherwise, maintain distance but rotate around the gardener
-						Direction dir = myGardener.location.directionTo(myLoc);
-						dir.rotateLeftDegrees(3);
-						tryMove(myLoc.directionTo(myGardener.location.add(dir, myGardener.location.distanceTo(myLoc))));
-					}
-				}
-				else { // no gardener, just wander
-					wander(10);
-				}
+				
+				wander(10);
+
 
 				// shake trees
 				canPickTrees();
@@ -871,14 +826,9 @@ public strictfp class RobotPlayer {
 
 		// TODO: Determine whether there are trees on the map
 		if(archon && rc.readBroadcast(5)==0) bestRatio = 0;
-		else if(bestRatio != 0 && rc.senseNearbyTrees(-1, Team.NEUTRAL).length > 0 && rc.readBroadcast(7) < rc.readBroadcast(6) + 2) bestRatio = 2;
+		else if(bestRatio != 0 && rc.senseNearbyTrees(6, Team.NEUTRAL).length > 0 && rc.readBroadcast(7) < rc.readBroadcast(6) + 1) bestRatio = 2;
 
-		System.out.println("** bestRatio : " + bestRatio);
-		System.out.println("** Gardener  : #=" + rc.readBroadcast(5) + "; /=" + rc.readBroadcast(5)/buildOrder[0]);
-		System.out.println("** Soldier   : #=" + rc.readBroadcast(6) + "; /=" + rc.readBroadcast(6)/buildOrder[1]);
-		System.out.println("** Lumberjack: #=" + rc.readBroadcast(7) + "; /=" + rc.readBroadcast(7)/buildOrder[2]);
-		System.out.println("** Tank      : #=" + rc.readBroadcast(8) + "; /=" + rc.readBroadcast(8)/buildOrder[3]);
-		System.out.println("** Scout     : #=" + rc.readBroadcast(9) + "; /=" + rc.readBroadcast(9)/buildOrder[4]);
+
 		
 		if(bullets > 300 && bestRatio == 1 && rc.getRoundNum() % 10 != 0)
 			bestRatio = 3;
@@ -982,7 +932,7 @@ public strictfp class RobotPlayer {
 		
 		int unitCount = rc.readBroadcast(5) + rc.readBroadcast(6) + rc.readBroadcast(7) + rc.readBroadcast(8) + rc.readBroadcast(9);
 
-		rc.setTeamMemory(0, rush ? 2 : 1);
+		//rc.setTeamMemory(0, false ? 2 : 1);
 		rc.setTeamMemory(1, unitCount);
 		
 		if(unitCount > 16) {
@@ -992,36 +942,7 @@ public strictfp class RobotPlayer {
 
 
 	static void loadData() throws GameActionException {
-		int lastRush = (int)rc.getTeamMemory()[0];
-		int lastUnitCount = (int)rc.getTeamMemory()[1];
-
-		if(lastRush != 0) {
-			if(lastUnitCount < 5) {
-				rush = lastRush == 2 ? false : true;
-			}
-			else {
-				rush = lastRush == 2 ? true : false;
-			}
-	
-			if(!rush) {
-				rc.setIndicatorDot(rc.getLocation(), 0, 0, 200);
-				rc.broadcast(0, 0);
-				buildOrder[0] = 6;
-				buildOrder[1] = 3;
-				buildOrder[2] = 0;
-				buildOrder[3] = 0;
-				buildOrder[4] = 2;
-			}
-			else {
-				rc.setIndicatorDot(rc.getLocation(), 200, 0, 0);
-				rc.broadcast(0, 1);
-				buildOrder[0] = 2;
-				buildOrder[1] = 4;
-				buildOrder[2] = 0;
-				buildOrder[3] = 0;
-				buildOrder[4] = 4;
-			}
-		}
+		
 
 	}
 
