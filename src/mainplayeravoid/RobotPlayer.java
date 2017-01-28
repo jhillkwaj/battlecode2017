@@ -916,8 +916,18 @@ public strictfp class RobotPlayer {
 	}
 
 	static boolean safeToMove(MapLocation moveLoc) {
-		if(charge || !willBulletHitMe(moveLoc))
-			return true;
+		if(charge || !willBulletHitMe(moveLoc)) {
+			if (type != RobotType.TANK) return true;
+			else {
+				MapLocation myLoc = rc.getLocation();
+				MapLocation nextLoc = myLoc.add(myLoc.directionTo(moveLoc), type.strideRadius);
+				TreeInfo trees[] = rc.senseNearbyTrees(-1, myTeam);
+				for(int i=0; i<trees.length; i++) {
+					if(nextLoc.distanceTo(trees[i].location)<trees[i].radius+type.bodyRadius) return false;
+				}
+				return true;
+			}
+		}
 		return false;
 	}
 
