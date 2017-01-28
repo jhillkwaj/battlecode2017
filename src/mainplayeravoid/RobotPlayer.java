@@ -231,6 +231,8 @@ public strictfp class RobotPlayer {
 					built++;
 				} else if (buildType == 2 && rc.canBuildRobot(RobotType.LUMBERJACK, dir)) { // type: lumberjack
 					rc.buildRobot(RobotType.LUMBERJACK, dir);
+					
+					rc.broadcast(7,rc.readBroadcast(7) + 1); //broadcast unit creation
 					built++;
 				} else if (buildType == 4 && rc.canBuildRobot(RobotType.SCOUT, dir)) { // type: scout
 					rc.buildRobot(RobotType.SCOUT, dir);
@@ -581,8 +583,7 @@ public strictfp class RobotPlayer {
 		// trees to chop down
 		int targetTree = -1;
 
-		//broadcast unit creation
-		rc.broadcast(7,rc.readBroadcast(7) + 1);
+		
 		
 		boolean doNotMove = false;
 
@@ -718,7 +719,7 @@ public strictfp class RobotPlayer {
 	 * Wanders randomly based on combat
 	 */
 	static void wander(int tries) throws GameActionException {
-		if(tries <= 0)
+		if(tries < 0)
 			return;
 		
 		MapLocation myLoc = rc.getLocation();
@@ -825,7 +826,8 @@ public strictfp class RobotPlayer {
 
 		// TODO: Determine whether there are trees on the map
 		if(archon && rc.readBroadcast(5)==0) bestRatio = 0;
-		else if(bestRatio != 0 && rc.senseNearbyTrees(6, Team.NEUTRAL).length > 0 && rc.readBroadcast(7) < rc.readBroadcast(6) + 1) bestRatio = 2;
+		else if(bestRatio != 0 && rc.senseNearbyTrees(6, Team.NEUTRAL).length > 0 && rc.readBroadcast(7) < rc.readBroadcast(6) + 1  
+				&& rc.senseNearbyRobots(-1, enemy).length == 0) bestRatio = 2;
 
 
 		
@@ -867,7 +869,7 @@ public strictfp class RobotPlayer {
 	 * @throws GameActionException
 	 */
 	static boolean tryMove(Direction dir) throws GameActionException {
-		return tryMove(dir,20,3);
+		return tryMove(dir,20,6);
 	}
 
 	/**
