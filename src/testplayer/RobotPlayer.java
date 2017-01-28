@@ -4,7 +4,6 @@ import java.util.Random;
 import battlecode.common.*;
 
 
-
 public strictfp class RobotPlayer {
 
 	////////////////////////////////////////
@@ -28,7 +27,7 @@ public strictfp class RobotPlayer {
 	static RobotController rc; // RobotController object, used to get information about the robot
 
 
-	static float[] buildOrder = {9, 16, 0, 0, 1}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
+	static float[] buildOrder = {9, 16, 0, 0, 5}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
 	static RobotType type; // robot's type
 	static int combat = -100; // set to 1 to go into combat, < 0 to avoid at that range, 0 to scout
 	static Team enemy;
@@ -136,7 +135,7 @@ public strictfp class RobotPlayer {
 
 				// Produce gardeners
 				if(chooseProduction(true) == 0) { // check if I should
-					Direction dir = new Direction(myLoc, oppArchons[0]); // direction roughly facing opponent
+					Direction dir = randomDirection();
 
 					// Try all directions to produce gardener
 					int num = 0;
@@ -451,7 +450,7 @@ public strictfp class RobotPlayer {
 
 				// broadcast death
 				if(!broadcastDeath && rc.getHealth() < 8) {
-					rc.broadcast(9,rc.readBroadcast(9) - 1);
+					//rc.broadcast(9,rc.readBroadcast(9) - 1);
 					broadcastDeath = true;
 				}
 
@@ -1024,18 +1023,64 @@ public strictfp class RobotPlayer {
 	}
 
 	static boolean safeToShoot(Direction dir) {
-		RobotInfo robots[] = rc.senseNearbyRobots(-1, myTeam);
+		MapLocation myLoc = rc.getLocation();
+		RobotInfo robots[] = rc.senseNearbyRobots(-1);
+		TreeInfo trees[] = rc.senseNearbyTrees(-1);
+		int robotSpot = 0;
+		int treeSpot = 0;
 		boolean safe = true;
-		for(int i=0; i<robots.length; i++) {
-			if(willShotCollideWithUnit(dir, robots[i])) {
-				safe = false;
-				break;
+		while(robotSpot < robots.length && treeSpot < trees.length) {
+			if(robots[robotSpot].location.distanceTo(myLoc) < trees[treeSpot].location.distanceTo(myLoc)) { // check next robot
+				if(willShotCollideWithRobot(dir, robots[robotSpot])) { // will collide
+					if(robots[robotSpot].team==enemy) return true;
+					else return false;
+				}
+				robotSpot++;
+			}
+			else { // check next tree
+				if(willShotCollideWithTree(dir, trees[treeSpot])) {
+					if(trees[treeSpot].team==enemy) return true;
+					else return false;
+				}
+				treeSpot++;
 			}
 		}
-		return safe;
+		if(robotSpot==robots.length) return false; // no robots left, and we didn't hit any enemies
+		else {
+			for(int i=robotSpot; i<robots.length; i++) {
+				if(willShotCollideWithRobot(dir, robots[i])) {
+					if(robots[robotSpot].team==enemy) return true;
+					else return false;
+				}
+			}
+		}
+		return false;
 	}
 
-	static boolean willShotCollideWithUnit(Direction dir, RobotInfo unit) {
+	static boolean willShotCollideWithTree(Direction dir, TreeInfo unit) {
+		// Get relevant bullet information
+		Direction propagationDirection = dir;
+		MapLocation bulletLocation = rc.getLocation(); // the bullet starts from our location since we fired it
+
+		// Calculate bullet relations to this robot
+		Direction directionToRobot = bulletLocation.directionTo(unit.getLocation());
+		float distToRobot = bulletLocation.distanceTo(unit.getLocation());
+		float theta = propagationDirection.radiansBetween(directionToRobot);
+
+		// If theta > 90 degrees, then the bullet is traveling away from the unit and we can break early
+		if (Math.abs(theta) > Math.PI/2) {
+			return false;
+		}
+
+		// distToRobot is our hypotenuse, theta is our angle, and we want to know this length of the opposite leg.
+		// This is the distance of a line that goes from myLocation and intersects perpendicularly with propagationDirection.
+		// This corresponds to the smallest radius circle centered at the unit's location that would intersect with the
+		// line that is the path of the bullet.
+		float perpendicularDist = (float)Math.abs(distToRobot * Math.sin(theta)); // soh cah toa :)
+		return (perpendicularDist <= unit.radius);
+	}
+
+	static boolean willShotCollideWithRobot(Direction dir, RobotInfo unit) {
 		// Get relevant bullet information
 		Direction propagationDirection = dir;
 		MapLocation bulletLocation = rc.getLocation(); // the bullet starts from our location since we fired it

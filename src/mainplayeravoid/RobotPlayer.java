@@ -27,7 +27,7 @@ public strictfp class RobotPlayer {
 	static RobotController rc; // RobotController object, used to get information about the robot
 
 
-	static float[] buildOrder = {9, 16, 0, 0, 5}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
+	static float[] buildOrder = {9, 16, 0, 0, 2}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
 	static RobotType type; // robot's type
 	static int combat = -100; // set to 1 to go into combat, < 0 to avoid at that range, 0 to scout
 	static Team enemy;
@@ -111,7 +111,7 @@ public strictfp class RobotPlayer {
 				// TODO: FIND A BETTER WAY TO AVOID INCOMING BULLETS
 
 				// Check for death
-				if(!broadcastDeath && rc.getHealth() < 20) {
+				if(!broadcastDeath && rc.getHealth() < 40) {
 					rc.broadcast(4,rc.readBroadcast(4) - 1);
 					broadcastDeath = true;
 				}
@@ -163,7 +163,7 @@ public strictfp class RobotPlayer {
 
 				// Move randomly
 				// TODO improve on this
-				wander(10);
+				wander(1);
 
 				// Tries to shake a tree
 				canPickTrees();
@@ -204,7 +204,7 @@ public strictfp class RobotPlayer {
 				nearbyBullets = rc.senseNearbyBullets();
 
 				// broadcast death
-				if(!broadcastDeath && rc.getHealth() < 20) {
+				if(!broadcastDeath && rc.getHealth() < 30) {
 					rc.broadcast(5,rc.readBroadcast(5) - 1);
 					broadcastDeath = true;
 				}
@@ -281,7 +281,7 @@ public strictfp class RobotPlayer {
 					else { // if we can't water, move closer to the tree
 						tryMove(directionTwords(rc.getLocation(), treeInfo.location));
 						if(!rc.hasMoved()) { // if there is a tree to water but we can't water it and can't move closer, wander
-							wander(10);
+							wander(1);
 						}
 					}
 				}
@@ -289,7 +289,7 @@ public strictfp class RobotPlayer {
 					// Move randomly
 					//TODO improve on this
 					if(!rc.hasMoved())
-						wander(10);
+						wander(1);
 				}
 
 				// Shake the closest tree
@@ -321,7 +321,7 @@ public strictfp class RobotPlayer {
 			// Try/catch blocks stop unhandled exceptions, which cause your robot to explode
 			try {
 				// Broadcast death
-				if(!broadcastDeath && rc.getHealth() < 20) {
+				if(!broadcastDeath && rc.getHealth() < 30) {
 					rc.broadcast(6,rc.readBroadcast(6) - 1);
 					broadcastDeath = true;
 				}
@@ -338,8 +338,8 @@ public strictfp class RobotPlayer {
 					int closest = 0;
 					float smallestDistance = Float.MAX_VALUE;
 					for(int i = 0; i < robots.length; i++) { // loop through and find closest
-						float distanceTo = robots[i].getLocation().distanceTo(rc.getLocation());
-						if(distanceTo < smallestDistance && (rc.getRoundNum() > 300 || robots[i].type != RobotType.ARCHON)) {
+						float distanceTo = robots[i].getLocation().distanceTo(myLoc);
+						if(distanceTo < smallestDistance && robots[i].type != RobotType.ARCHON) {
 							closest = i;
 							smallestDistance = distanceTo;
 						}
@@ -357,15 +357,14 @@ public strictfp class RobotPlayer {
 
 						//move closer to the enemy if it's not a soldier or lumberjack or we're greater than 0.7*sensorRad away
 						if(robots[closest].type == RobotType.ARCHON || robots[closest].type == RobotType.GARDENER
-								|| robots[closest].type == RobotType.SCOUT || smallestDistance > rc.getType().sensorRadius  * .5f) {
-							// update location
-							myLoc = rc.getLocation();
+								|| robots[closest].type == RobotType.SCOUT || smallestDistance > type.sensorRadius  * .5f) {
+							
 
 							// get enemy radius
 							float enemyRad = robots[closest].type.bodyRadius;
 
 							// check if we can move right next to the enemy
-							if(smallestDistance - 1 - enemyRad <= rc.getType().strideRadius &&
+							if(smallestDistance - 1 - enemyRad <= type.strideRadius &&
 									rc.canMove(directionTwords(myLoc, robots[closest].location), smallestDistance - 1 - enemyRad) ) { // if we can...
 								if(safeToMove(rc.getLocation().add(directionTwords(myLoc, robots[closest].location),
 										smallestDistance - 1 - enemyRad))) { // ... and it's safe...
@@ -415,12 +414,13 @@ public strictfp class RobotPlayer {
 				}
 
 				
-				wander(10);
+				wander(1);
 
 
 				// shake trees
 				canPickTrees();
 
+				
 				// Clock.yield() makes the robot wait until the next turn, then it will perform this loop again
 				Clock.yield();
 
@@ -556,7 +556,7 @@ public strictfp class RobotPlayer {
 				// Move randomly; generally occurs when
 				// oTG = 0 and no gardener nearby
 				if(!rc.hasMoved())
-					wander(10);
+					wander(1);
 
 				// shake nearby trees
 				canPickTrees();
@@ -683,7 +683,7 @@ public strictfp class RobotPlayer {
 				// Move randomly
 				// TODO improve on this
 				if(!doNotMove && !rc.hasMoved()) {
-					wander(10);
+					wander(1);
 				}
 
 				canPickTrees();
@@ -721,10 +721,12 @@ public strictfp class RobotPlayer {
 		if(tries <= 0)
 			return;
 		
+		MapLocation myLoc = rc.getLocation();
+		
 		//Try and move towards a tree with bullets
 		MapLocation treeLoc = moveToBulletTree();
 		if(combat >= 0 && treeLoc != null)
-			targetDirection = new Direction(rc.getLocation(), treeLoc);
+			targetDirection = new Direction(myLoc, treeLoc);
 
 		if((combat != 0 && targetDirection != null)) {
 			//run to
@@ -734,13 +736,11 @@ public strictfp class RobotPlayer {
 				MapLocation newLoc = new MapLocation(broadcastOne, broadcastTwo);
 				if(combat > 0) {
 
-					targetDirection = new Direction(rc.getLocation(), newLoc);
+					targetDirection = new Direction(myLoc, newLoc);
 					signalLoc[0] = broadcastOne;
 					signalLoc[1] = broadcastTwo;
 				}
 				else if(combat < 0) {
-					//run away if close
-					MapLocation myLoc = rc.getLocation();
 					if(myLoc.distanceSquaredTo(newLoc) < -combat) {
 						targetDirection = new Direction(newLoc, myLoc);
 						signalLoc[0] = broadcastOne;
@@ -881,6 +881,9 @@ public strictfp class RobotPlayer {
 	 */
 	static boolean tryMove(Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
 
+		if(rc.hasMoved())
+			return false;
+		
 		// First, try intended direction
 		if (rc.canMove(dir) && safeToMove(rc.getLocation().add(dir, type.strideRadius))) {
 			rc.move(dir);
@@ -919,7 +922,7 @@ public strictfp class RobotPlayer {
 	}
 
 	static boolean willBulletHitMe(MapLocation mapLocation){
-		for(int i = 0; i < nearbyBullets.length && i < 6; i++) {
+		for(int i = 0; i < nearbyBullets.length && i < 22; i++) {
 			if(willCollideWithMe(nearbyBullets[i],mapLocation)) {
 				return true;
 			}
@@ -974,7 +977,7 @@ public strictfp class RobotPlayer {
 
 		// find perpendicular from center to segment
 		if(bulletLocation.distanceTo(nextBulletLoc)<dist) { // bullet does not reach C, check if B is in the circle
-			return (nextBulletLoc.isWithinDistance(myLocation, rc.getType().bodyRadius) || bulletLocation.isWithinDistance(myLocation, rc.getType().bodyRadius));
+			return (nextBulletLoc.isWithinDistance(myLocation, type.bodyRadius) || bulletLocation.isWithinDistance(myLocation, type.bodyRadius));
 		}
 		else { // bullet does reach C, check if it is in the circle
 			// distToRobot is our hypotenuse, theta is our angle, and we want to know this length of the opposite leg.
