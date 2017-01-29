@@ -869,7 +869,7 @@ public strictfp class RobotPlayer {
 	 * @throws GameActionException
 	 */
 	static boolean tryMove(Direction dir) throws GameActionException {
-		return tryMove(dir,20,6);
+		return tryMove(dir,20,3);
 	}
 
 	/**
