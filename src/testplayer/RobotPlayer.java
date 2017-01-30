@@ -27,7 +27,7 @@ public strictfp class RobotPlayer {
 	static RobotController rc; // RobotController object, used to get information about the robot
 
 
-	static float[] buildOrder = {9, 16, 0, 0, 2}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
+	static float[] buildOrder = {8, 16, 0, 0, 2}; // Ideal ratio: {gardener: soldier: lumberjack: tank: scouts}
 	static RobotType type; // robot's type
 	static int combat = -100; // set to 1 to go into combat, < 0 to avoid at that range, 0 to scout
 	static Team enemy;
