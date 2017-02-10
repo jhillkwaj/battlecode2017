@@ -1,4 +1,4 @@
-Player for team INSUFFICIENT DATA from battlecode 2017. The submitted player is under mainPlayerAvoid
+Player for team INSUFFICIENT DATA from battlecode 2017. The submitted player is under src mainPlayerAvoid
 
 
 
